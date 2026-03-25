@@ -1,10 +1,3 @@
----
-name: batch-npu-api-test
-description: 
-  批量处理 PyTorch API 的 NPU 功能测试生成任务。当输入是 api_manifest.csv
-  或者用户要求批量生成/审查/修复 test/api_test 下的 API 测试文件时使用。
----
-
 你负责执行完整的批处理流水线，不要要求用户分步下达指令。
 
 输入：
@@ -55,4 +48,3 @@ description:
   | --- | --- |
   ...
   """
-

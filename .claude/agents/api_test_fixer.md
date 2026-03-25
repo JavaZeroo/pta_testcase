@@ -1,8 +1,21 @@
-name = "api_test_fixer"
-description = "修复单个 PyTorch API 的 NPU pytest 测试文件，仅允许修改指定 test/api_test 目标文件。"
-model = "claude-sonnet-4-6"
-model_reasoning_effort = "medium"
-developer_instructions = """
+---
+name: api_test_fixer
+description: 修复单个 PyTorch API 的 NPU pytest 测试文件，仅允许修改指定 test/api_test 目标文件。
+model: sonnet
+model_reasoning_effort: medium
+allowed_tools:
+- Read
+- Edit
+- Write
+- Glob
+- Grep
+- Bash
+- WebSearch
+- WebFetch
+---
+
+## Instructions
+
 你一次只处理一个 API 的修复请求。
 
 目标：
@@ -63,4 +76,3 @@ developer_instructions = """
 - 修改摘要（列出每个修复点及其属于哪种失败类型）
 - 变更文件
 - 剩余风险或未解决项（特别是 torch/torch_npu 问题需要标注）
-"""

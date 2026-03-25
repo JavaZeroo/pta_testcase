@@ -4,7 +4,7 @@ description: 检查 NPU API 测试文件是否符合项目规范。
 tools:
 - read
 - search
-model: gpt-5.4
+model: claude-sonnet-4-6
 model_reasoning_effort: medium
 ---
 

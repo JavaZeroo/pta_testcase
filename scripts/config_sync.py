@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""Configuration synchronization tool for Codex CLI ↔ Copilot CLI config formats.
+"""Configuration synchronization tool for Codex CLI ↔ Copilot CLI ↔ Claude CLI config formats.
 
 Converts agent definitions, skills, and project-level instructions between:
   - .codex/  (Codex CLI: TOML agents, SKILL.md skills, config.toml)
   - .github/ (Copilot CLI: .agent.md agents, SKILL.md skills, copilot-instructions.md)
+  - .claude/ (Claude CLI: CLAUDE.md instructions, .claude/commands/ skills)
 
 Usage:
     python -m scripts.config_sync --from codex --to copilot [--dry-run]
+    python -m scripts.config_sync --from codex --to claude [--dry-run]
     python -m scripts.config_sync --from copilot --to codex [--dry-run]
     python -m scripts.config_sync --diff
 """
@@ -40,9 +42,15 @@ _COPILOT_AGENTS_DIR = ".github/agents"
 _COPILOT_SKILLS_DIR = ".github/skills"
 _COPILOT_INSTRUCTIONS = ".github/copilot-instructions.md"
 
+_CLAUDE_AGENTS_DIR = ".claude/agents"
+_CLAUDE_COMMANDS_DIR = ".claude/commands"
+_CLAUDE_INSTRUCTIONS = "CLAUDE.md"
+
 # Tool mapping between Codex sandbox_mode and Copilot tools list
 _READONLY_TOOLS = ["read", "search"]
 _READWRITE_TOOLS = ["read", "edit", "shell", "search"]
+
+_VALID_TARGETS = {"codex", "copilot", "claude"}
 
 
 # ---------------------------------------------------------------------------
@@ -193,6 +201,120 @@ def copilot_agent_md_to_codex_toml(md_path: Path) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Codex → Claude agents
+# ---------------------------------------------------------------------------
+
+def codex_agent_toml_to_claude_agent_md(toml_path: Path) -> str:
+    """Convert a ``.codex/agents/*.toml`` file to a Claude ``.claude/agents/*.md`` string.
+
+    Claude Code agent files use YAML frontmatter (name, description, model,
+    optional allowed_tools list) and a markdown body with instructions.
+
+    Parameters
+    ----------
+    toml_path:
+        Path to the Codex agent TOML file.
+
+    Returns
+    -------
+    str
+        The full content of the equivalent Claude agent ``.md`` file.
+    """
+    with open(toml_path, "rb") as fh:
+        data: dict[str, Any] = tomllib.load(fh)
+
+    name: str = data.get("name", toml_path.stem)
+    description: str = data.get("description", "")
+    sandbox_mode: str = data.get("sandbox_mode", "")
+    developer_instructions: str = data.get("developer_instructions", "")
+
+    # Build YAML frontmatter
+    frontmatter: dict[str, Any] = {
+        "name": name,
+        "description": description,
+    }
+
+    model = data.get("model")
+    reasoning_effort = data.get("model_reasoning_effort")
+    if model:
+        frontmatter["model"] = model
+    if reasoning_effort:
+        frontmatter["model_reasoning_effort"] = reasoning_effort
+
+    # Map sandbox_mode to allowed_tools for Claude
+    if sandbox_mode == "read-only":
+        frontmatter["allowed_tools"] = ["Read", "Glob", "Grep", "WebSearch", "WebFetch"]
+    else:
+        frontmatter["allowed_tools"] = [
+            "Read", "Edit", "Write", "Glob", "Grep", "Bash", "WebSearch", "WebFetch",
+        ]
+
+    fm_text = yaml.dump(
+        frontmatter,
+        default_flow_style=False,
+        allow_unicode=True,
+        sort_keys=False,
+        width=120,
+    ).rstrip("\n")
+
+    body_parts: list[str] = []
+    if developer_instructions.strip():
+        body_parts.append("## Instructions\n")
+        body_parts.append(developer_instructions.strip())
+
+    body = "\n".join(body_parts)
+
+    return f"---\n{fm_text}\n---\n\n{body}\n"
+
+
+# ---------------------------------------------------------------------------
+# Claude agents → Codex
+# ---------------------------------------------------------------------------
+
+def claude_agent_md_to_codex_toml(md_path: Path) -> str:
+    """Convert a ``.claude/agents/*.md`` file to a Codex TOML string.
+
+    Parameters
+    ----------
+    md_path:
+        Path to the Claude agent markdown file.
+
+    Returns
+    -------
+    str
+        The full content of the equivalent Codex agent ``.toml`` file.
+    """
+    text = md_path.read_text(encoding="utf-8")
+    fm, body = _parse_agent_md(text)
+
+    name: str = fm.get("name", md_path.stem)
+    description: str = fm.get("description", "").strip()
+    allowed_tools: list[str] = fm.get("allowed_tools", [])
+    model: str = fm.get("model", "")
+    reasoning_effort: str = fm.get("model_reasoning_effort", "")
+
+    instructions = _extract_instructions(body)
+
+    # Determine sandbox_mode: if allowed_tools is read-only subset
+    tool_set = {t.lower() for t in allowed_tools}
+    is_readonly = bool(tool_set) and tool_set <= {"read", "glob", "grep", "websearch", "webfetch"}
+
+    lines: list[str] = []
+    lines.append(f'name = "{name}"')
+    lines.append(f"description = {_format_toml_string(description)}")
+    if model:
+        lines.append(f'model = "{model}"')
+    if reasoning_effort:
+        lines.append(f'model_reasoning_effort = "{reasoning_effort}"')
+    if is_readonly:
+        lines.append('sandbox_mode = "read-only"')
+    if instructions:
+        lines.append(f"developer_instructions = {_format_toml_string(instructions, multiline=True)}")
+
+    return "\n".join(lines) + "\n"
+
+
+# ---------------------------------------------------------------------------
 # Skills sync
 # ---------------------------------------------------------------------------
 
@@ -229,6 +351,111 @@ def sync_skills(src_dir: Path, dst_dir: Path) -> list[Path]:
 # ---------------------------------------------------------------------------
 # copilot-instructions.md generation
 # ---------------------------------------------------------------------------
+
+def generate_claude_instructions(agents_md_path: Path, output_path: Path) -> None:
+    """Generate ``CLAUDE.md`` that includes AGENTS.md content.
+
+    Parameters
+    ----------
+    agents_md_path:
+        Path to the root ``AGENTS.md`` file.
+    output_path:
+        Path where ``CLAUDE.md`` will be written.
+    """
+    if not agents_md_path.is_file():
+        raise FileNotFoundError(f"AGENTS.md not found at {agents_md_path}")
+
+    agents_content = agents_md_path.read_text(encoding="utf-8").strip()
+
+    header = textwrap.dedent("""\
+        <!-- Auto-generated by scripts/config_sync.py — do not edit manually. -->
+        <!-- Source: AGENTS.md -->
+
+    """)
+
+    # Replace the heading to CLAUDE.md
+    content = agents_content.replace("# AGENTS.md", "# CLAUDE.md", 1)
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(header + content + "\n", encoding="utf-8")
+
+
+def sync_skills_to_claude_commands(src_dir: Path, dst_dir: Path) -> list[Path]:
+    """Convert SKILL.md files to Claude CLI command markdown files.
+
+    Each ``SKILL.md`` is copied as ``<skill-name>.md`` under *dst_dir*.
+    """
+    copied: list[Path] = []
+    if not src_dir.is_dir():
+        return copied
+
+    for skill_dir in sorted(src_dir.iterdir()):
+        skill_file = skill_dir / "SKILL.md"
+        if not skill_file.is_file():
+            continue
+        # Use the directory name as the command name
+        cmd_name = skill_dir.name
+        dst_file = dst_dir / f"{cmd_name}.md"
+        dst_file.parent.mkdir(parents=True, exist_ok=True)
+        # Extract body content from SKILL.md (strip YAML frontmatter)
+        text = skill_file.read_text(encoding="utf-8")
+        pattern = re.compile(r"\A---\n.*?\n---\n(.*)", re.DOTALL)
+        m = pattern.match(text)
+        body = m.group(1).strip() if m else text.strip()
+        dst_file.write_text(body + "\n", encoding="utf-8")
+        copied.append(dst_file)
+    return copied
+
+
+def sync_claude_commands_to_skills(src_dir: Path, dst_dir: Path) -> list[Path]:
+    """Convert Claude CLI command markdown files back to SKILL.md files.
+
+    Each ``<command-name>.md`` under *src_dir* is written as
+    ``<command-name>/SKILL.md`` under *dst_dir*, with YAML frontmatter
+    reconstructed from the command name.
+    """
+    copied: list[Path] = []
+    if not src_dir.is_dir():
+        return copied
+
+    for cmd_file in sorted(src_dir.glob("*.md")):
+        cmd_name = cmd_file.stem
+        body = cmd_file.read_text(encoding="utf-8").strip()
+
+        # Try to recover frontmatter from existing target SKILL.md
+        dst_file = dst_dir / cmd_name / "SKILL.md"
+        existing_fm: dict[str, Any] | None = None
+        if dst_file.is_file():
+            try:
+                existing_fm, _ = _parse_agent_md(dst_file.read_text(encoding="utf-8"))
+            except ValueError:
+                pass
+
+        if existing_fm:
+            # Preserve original frontmatter (name, description, etc.)
+            fm_text = yaml.dump(
+                existing_fm,
+                default_flow_style=False,
+                allow_unicode=True,
+                sort_keys=False,
+                width=120,
+            ).rstrip("\n")
+        else:
+            # Generate minimal frontmatter
+            fm_text = yaml.dump(
+                {"name": cmd_name, "description": cmd_name},
+                default_flow_style=False,
+                allow_unicode=True,
+                sort_keys=False,
+                width=120,
+            ).rstrip("\n")
+
+        content = f"---\n{fm_text}\n---\n\n{body}\n"
+        dst_file.parent.mkdir(parents=True, exist_ok=True)
+        dst_file.write_text(content, encoding="utf-8")
+        copied.append(dst_file)
+    return copied
+
 
 def generate_copilot_instructions(agents_md_path: Path, output_path: Path) -> None:
     """Generate ``.github/copilot-instructions.md`` that includes AGENTS.md content.
@@ -285,16 +512,28 @@ def sync_configs(
     """
     if source == target:
         raise ValueError("source and target must differ")
-    if source not in ("codex", "copilot") or target not in ("codex", "copilot"):
-        raise ValueError("source and target must be 'codex' or 'copilot'")
+    if source not in _VALID_TARGETS or target not in _VALID_TARGETS:
+        raise ValueError(f"source and target must be one of {sorted(_VALID_TARGETS)}")
 
     actions: list[str] = []
     prefix = "[dry-run] " if dry_run else ""
 
     if source == "codex" and target == "copilot":
         actions.extend(_sync_codex_to_copilot(repo_root, dry_run, prefix))
-    else:
+    elif source == "codex" and target == "claude":
+        actions.extend(_sync_codex_to_claude(repo_root, dry_run, prefix))
+    elif source == "copilot" and target == "codex":
         actions.extend(_sync_copilot_to_codex(repo_root, dry_run, prefix))
+    elif source == "copilot" and target == "claude":
+        # copilot -> codex -> claude
+        actions.extend(_sync_copilot_to_codex(repo_root, dry_run, prefix))
+        actions.extend(_sync_codex_to_claude(repo_root, dry_run, prefix))
+    elif source == "claude" and target == "codex":
+        # Claude -> Codex: copy CLAUDE.md back to AGENTS.md
+        actions.extend(_sync_claude_to_codex(repo_root, dry_run, prefix))
+    elif source == "claude" and target == "copilot":
+        actions.extend(_sync_claude_to_codex(repo_root, dry_run, prefix))
+        actions.extend(_sync_codex_to_copilot(repo_root, dry_run, prefix))
 
     return actions
 
@@ -387,15 +626,106 @@ def _sync_copilot_to_codex(repo_root: Path, dry_run: bool, prefix: str) -> list[
     return actions
 
 
+def _sync_codex_to_claude(repo_root: Path, dry_run: bool, prefix: str) -> list[str]:
+    """Convert .codex/ → .claude/ + CLAUDE.md."""
+    actions: list[str] = []
+
+    # --- Agents ---
+    src_agents = repo_root / _CODEX_AGENTS_DIR
+    dst_agents = repo_root / _CLAUDE_AGENTS_DIR
+    if src_agents.is_dir():
+        for toml_file in sorted(src_agents.glob("*.toml")):
+            md_content = codex_agent_toml_to_claude_agent_md(toml_file)
+            dst_file = dst_agents / f"{toml_file.stem}.md"
+            action = f"{prefix}convert {toml_file.relative_to(repo_root)} → {dst_file.relative_to(repo_root)}"
+            actions.append(action)
+            if not dry_run:
+                dst_file.parent.mkdir(parents=True, exist_ok=True)
+                dst_file.write_text(md_content, encoding="utf-8")
+
+    # --- CLAUDE.md from AGENTS.md ---
+    agents_md = repo_root / _CODEX_AGENTS_MD
+    output_path = repo_root / _CLAUDE_INSTRUCTIONS
+    if agents_md.is_file():
+        action = f"{prefix}generate {_CLAUDE_INSTRUCTIONS} from {_CODEX_AGENTS_MD}"
+        actions.append(action)
+        if not dry_run:
+            generate_claude_instructions(agents_md, output_path)
+
+    # --- Skills → Claude commands ---
+    src_skills = repo_root / _CODEX_SKILLS_DIR
+    dst_commands = repo_root / _CLAUDE_COMMANDS_DIR
+    if src_skills.is_dir():
+        if dry_run:
+            for skill_dir in sorted(src_skills.iterdir()):
+                if (skill_dir / "SKILL.md").is_file():
+                    actions.append(f"{prefix}convert {_CODEX_SKILLS_DIR}/{skill_dir.name}/SKILL.md → {_CLAUDE_COMMANDS_DIR}/{skill_dir.name}.md")
+        else:
+            copied = sync_skills_to_claude_commands(src_skills, dst_commands)
+            for p in copied:
+                actions.append(f"{prefix}convert → {p.relative_to(repo_root)}")
+
+    return actions
+
+
+def _sync_claude_to_codex(repo_root: Path, dry_run: bool, prefix: str) -> list[str]:
+    """Convert .claude/ → .codex/."""
+    actions: list[str] = []
+
+    # --- Agents ---
+    src_agents = repo_root / _CLAUDE_AGENTS_DIR
+    dst_agents = repo_root / _CODEX_AGENTS_DIR
+    if src_agents.is_dir():
+        for md_file in sorted(src_agents.glob("*.md")):
+            toml_content = claude_agent_md_to_codex_toml(md_file)
+            dst_file = dst_agents / f"{md_file.stem}.toml"
+            action = f"{prefix}convert {md_file.relative_to(repo_root)} → {dst_file.relative_to(repo_root)}"
+            actions.append(action)
+            if not dry_run:
+                dst_file.parent.mkdir(parents=True, exist_ok=True)
+                dst_file.write_text(toml_content, encoding="utf-8")
+
+    # --- Commands → Skills ---
+    src_commands = repo_root / _CLAUDE_COMMANDS_DIR
+    dst_skills = repo_root / _CODEX_SKILLS_DIR
+    if src_commands.is_dir():
+        if dry_run:
+            for cmd_file in sorted(src_commands.glob("*.md")):
+                actions.append(
+                    f"{prefix}convert {_CLAUDE_COMMANDS_DIR}/{cmd_file.name} → "
+                    f"{_CODEX_SKILLS_DIR}/{cmd_file.stem}/SKILL.md"
+                )
+        else:
+            copied = sync_claude_commands_to_skills(src_commands, dst_skills)
+            for p in copied:
+                actions.append(f"{prefix}convert → {p.relative_to(repo_root)}")
+
+    # --- CLAUDE.md → AGENTS.md ---
+    claude_md = repo_root / _CLAUDE_INSTRUCTIONS
+    agents_md = repo_root / _CODEX_AGENTS_MD
+    if claude_md.is_file():
+        action = f"{prefix}update {_CODEX_AGENTS_MD} from {_CLAUDE_INSTRUCTIONS}"
+        actions.append(action)
+        if not dry_run:
+            raw = claude_md.read_text(encoding="utf-8")
+            # Strip auto-generated header comments
+            content = re.sub(r"^<!--.*?-->\s*\n?", "", raw, flags=re.MULTILINE).strip()
+            # Restore original heading
+            content = content.replace("# CLAUDE.md", "# AGENTS.md", 1)
+            agents_md.write_text(content + "\n", encoding="utf-8")
+
+    return actions
+
+
 # ---------------------------------------------------------------------------
 # Diff
 # ---------------------------------------------------------------------------
 
 def diff_configs(repo_root: Path) -> str:
-    """Show differences between ``.codex/`` and ``.github/`` agent configs.
+    """Show differences between ``.codex/``, ``.github/``, and ``.claude/`` agent configs.
 
-    For each agent, converts the Codex TOML to Copilot MD (or vice-versa)
-    and diffs against the existing counterpart file.
+    For each agent, converts the Codex TOML to the target format and diffs
+    against the existing counterpart file.
 
     Returns
     -------
@@ -404,12 +734,14 @@ def diff_configs(repo_root: Path) -> str:
     """
     lines: list[str] = []
 
-    # Collect agent names from both sides
+    # Collect agent names from all three backends
     codex_dir = repo_root / _CODEX_AGENTS_DIR
     copilot_dir = repo_root / _COPILOT_AGENTS_DIR
+    claude_dir = repo_root / _CLAUDE_AGENTS_DIR
 
     codex_agents: dict[str, Path] = {}
     copilot_agents: dict[str, Path] = {}
+    claude_agents: dict[str, Path] = {}
 
     if codex_dir.is_dir():
         for f in codex_dir.glob("*.toml"):
@@ -417,9 +749,14 @@ def diff_configs(repo_root: Path) -> str:
     if copilot_dir.is_dir():
         for f in copilot_dir.glob("*.agent.md"):
             copilot_agents[f.name.removesuffix(".agent.md")] = f
+    if claude_dir.is_dir():
+        for f in claude_dir.glob("*.md"):
+            claude_agents[f.stem] = f
 
-    all_names = sorted(set(codex_agents) | set(copilot_agents))
+    all_names = sorted(set(codex_agents) | set(copilot_agents) | set(claude_agents))
 
+    # --- Codex ↔ Copilot ---
+    lines.append("Agents (.codex/ ↔ .github/):")
     for name in all_names:
         codex_path = codex_agents.get(name)
         copilot_path = copilot_agents.get(name)
@@ -429,7 +766,6 @@ def diff_configs(repo_root: Path) -> str:
         elif copilot_path and not codex_path:
             lines.append(f"  {name}: only in .github/ (no .codex/ counterpart)")
         elif codex_path and copilot_path:
-            # Convert codex → copilot and compare
             generated = codex_agent_toml_to_copilot_md(codex_path)
             existing = copilot_path.read_text(encoding="utf-8")
             if generated == existing:
@@ -444,7 +780,35 @@ def diff_configs(repo_root: Path) -> str:
                 )
                 lines.extend("    " + l.rstrip("\n") for l in diff)
 
-    # Skills
+    # --- Codex ↔ Claude ---
+    lines.append("")
+    lines.append("Agents (.codex/ ↔ .claude/):")
+    for name in all_names:
+        codex_path = codex_agents.get(name)
+        claude_path = claude_agents.get(name)
+
+        if codex_path and not claude_path:
+            lines.append(f"  {name}: only in .codex/ (no .claude/ counterpart)")
+        elif claude_path and not codex_path:
+            lines.append(f"  {name}: only in .claude/ (no .codex/ counterpart)")
+        elif codex_path and claude_path:
+            generated = codex_agent_toml_to_claude_agent_md(codex_path)
+            existing = claude_path.read_text(encoding="utf-8")
+            if generated == existing:
+                lines.append(f"  {name}: in sync ✓")
+            else:
+                lines.append(f"  {name}: DIFFERS")
+                diff = difflib.unified_diff(
+                    existing.splitlines(keepends=True),
+                    generated.splitlines(keepends=True),
+                    fromfile=str(claude_path.relative_to(repo_root)),
+                    tofile=f"(generated from {codex_path.relative_to(repo_root)})",
+                )
+                lines.extend("    " + l.rstrip("\n") for l in diff)
+
+    # Skills (.codex/ ↔ .github/)
+    lines.append("")
+    lines.append("Skills (.codex/ ↔ .github/):")
     codex_skills = repo_root / _CODEX_SKILLS_DIR
     copilot_skills = repo_root / _COPILOT_SKILLS_DIR
     codex_skill_files = sorted(codex_skills.rglob("SKILL.md")) if codex_skills.is_dir() else []
@@ -466,7 +830,44 @@ def diff_configs(repo_root: Path) -> str:
             else:
                 lines.append(f"  skill {rel}: DIFFERS")
 
-    # AGENTS.md vs copilot-instructions.md
+    # Skills/commands (.codex/ ↔ .claude/)
+    lines.append("")
+    lines.append("Skills/commands (.codex/ ↔ .claude/):")
+    claude_commands = repo_root / _CLAUDE_COMMANDS_DIR
+
+    # Collect skill names from codex (directory names) and claude (file stems)
+    codex_skill_names: set[str] = set()
+    if codex_skills.is_dir():
+        for d in codex_skills.iterdir():
+            if (d / "SKILL.md").is_file():
+                codex_skill_names.add(d.name)
+    claude_cmd_names: set[str] = set()
+    if claude_commands.is_dir():
+        for f in claude_commands.glob("*.md"):
+            claude_cmd_names.add(f.stem)
+
+    for name in sorted(codex_skill_names | claude_cmd_names):
+        skill_file = codex_skills / name / "SKILL.md"
+        cmd_file = claude_commands / f"{name}.md"
+        if name in codex_skill_names and name not in claude_cmd_names:
+            lines.append(f"  {name}: only in .codex/skills/ (no .claude/commands/ counterpart)")
+        elif name in claude_cmd_names and name not in codex_skill_names:
+            lines.append(f"  {name}: only in .claude/commands/ (no .codex/skills/ counterpart)")
+        else:
+            # Compare: extract body from SKILL.md and compare with command file
+            skill_text = skill_file.read_text(encoding="utf-8")
+            pattern = re.compile(r"\A---\n.*?\n---\n(.*)", re.DOTALL)
+            m = pattern.match(skill_text)
+            skill_body = (m.group(1).strip() if m else skill_text.strip()) + "\n"
+            cmd_body = cmd_file.read_text(encoding="utf-8")
+            if skill_body == cmd_body:
+                lines.append(f"  {name}: in sync ✓")
+            else:
+                lines.append(f"  {name}: DIFFERS")
+
+    # Instructions files
+    lines.append("")
+    lines.append("Instructions:")
     agents_md = repo_root / _CODEX_AGENTS_MD
     instructions_md = repo_root / _COPILOT_INSTRUCTIONS
     if agents_md.is_file() and instructions_md.is_file():
@@ -482,9 +883,25 @@ def diff_configs(repo_root: Path) -> str:
     elif instructions_md.is_file():
         lines.append(f"  {_CODEX_AGENTS_MD}: missing")
 
+    claude_md = repo_root / _CLAUDE_INSTRUCTIONS
+    if agents_md.is_file() and claude_md.is_file():
+        raw = claude_md.read_text(encoding="utf-8")
+        content = re.sub(r"^<!--.*?-->\s*\n?", "", raw, flags=re.MULTILINE).strip()
+        # Normalize heading for comparison
+        content = content.replace("# CLAUDE.md", "# AGENTS.md", 1)
+        agents_content = agents_md.read_text(encoding="utf-8").strip()
+        if content == agents_content:
+            lines.append(f"  {_CODEX_AGENTS_MD} ↔ {_CLAUDE_INSTRUCTIONS}: in sync ✓")
+        else:
+            lines.append(f"  {_CODEX_AGENTS_MD} ↔ {_CLAUDE_INSTRUCTIONS}: DIFFERS")
+    elif agents_md.is_file() and not claude_md.is_file():
+        lines.append(f"  {_CLAUDE_INSTRUCTIONS}: missing")
+    elif claude_md.is_file() and not agents_md.is_file():
+        lines.append(f"  {_CODEX_AGENTS_MD}: missing")
+
     if not lines:
-        return "No configuration files found in either .codex/ or .github/."
-    return "Config diff (.codex/ ↔ .github/):\n" + "\n".join(lines)
+        return "No configuration files found."
+    return "Config diff (.codex/ ↔ .github/ ↔ .claude/):\n" + "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
@@ -494,18 +911,18 @@ def diff_configs(repo_root: Path) -> str:
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="config_sync",
-        description="Synchronize config between Codex CLI (.codex/) and Copilot CLI (.github/).",
+        description="Synchronize config between Codex CLI (.codex/), Copilot CLI (.github/), and Claude CLI (.claude/).",
     )
     parser.add_argument(
         "--from",
         dest="source",
-        choices=["codex", "copilot"],
+        choices=["codex", "copilot", "claude"],
         help="Source config format.",
     )
     parser.add_argument(
         "--to",
         dest="target",
-        choices=["codex", "copilot"],
+        choices=["codex", "copilot", "claude"],
         help="Target config format.",
     )
     parser.add_argument(

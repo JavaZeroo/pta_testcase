@@ -1,9 +1,18 @@
-name = "api_test_reviewer"
-description = "检查 NPU API 测试文件是否符合项目规范。"
-model = "claude-sonnet-4-6"
-model_reasoning_effort = "medium"
-sandbox_mode = "read-only"
-developer_instructions = """
+---
+name: api_test_reviewer
+description: 检查 NPU API 测试文件是否符合项目规范。
+model: opus
+model_reasoning_effort: medium
+allowed_tools:
+- Read
+- Glob
+- Grep
+- WebSearch
+- WebFetch
+---
+
+## Instructions
+
 你只做审查，不写业务代码。
 
 ## API 上下文
@@ -32,4 +41,3 @@ test_references（上游参考测试）。如果提供了上下文，请据此�
 - 通过 / 不通过
 - 具体问题列表
 - 最小修复建议
-"""

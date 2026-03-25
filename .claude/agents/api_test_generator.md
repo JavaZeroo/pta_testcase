@@ -1,8 +1,21 @@
-name = "api_test_generator"
-description = "为单个 PyTorch API 生成 NPU pytest 功能测试文件。"
-model = "claude-sonnet-4-6"
-model_reasoning_effort = "medium"
-developer_instructions = """
+---
+name: api_test_generator
+description: 为单个 PyTorch API 生成 NPU pytest 功能测试文件。
+model: sonnet
+model_reasoning_effort: medium
+allowed_tools:
+- Read
+- Edit
+- Write
+- Glob
+- Grep
+- Bash
+- WebSearch
+- WebFetch
+---
+
+## Instructions
+
 你一次只处理一个 API。
 你的目标是根据输入的 API 名称和 file_name，生成 1 个 pytest 测试文件到 test/api_test/。
 
@@ -98,4 +111,3 @@ import torch_npu  # noqa: F401
 - 文件路径
 - 覆盖的参数维度
 - 未覆盖项及原因
-"""

@@ -6,7 +6,7 @@ tools:
 - edit
 - shell
 - search
-model: gpt-5.4-mini
+model: claude-sonnet-4-6
 model_reasoning_effort: medium
 ---
 

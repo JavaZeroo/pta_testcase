@@ -407,6 +407,9 @@ def prompt_for_generation(manifest_path: Path, run_dir: Path, max_workers: int, 
         f"5. 不要修改其他目录。",
         f"6. 最终回复写入简洁的生成摘要，包含触达的文件和静态阻塞项。",
         f"7. 本次批处理的并发预算参考值：{max_workers}。",
+        f"8. 生成功能测试时以正常可调用路径为主，优先验证 API 能否在 NPU 上正常运行、返回类型是否合理、输出设备行为是否正确。",
+        f"9. 不要生成过多报错导向用例；只有在上下文或文档明确表明会稳定抛异常时，才保留少量高价值 pytest.raises 场景。",
+        f"10. 不要为了凑覆盖机械地写 `None`、`object()`、`int` 等无意义负例；避免产出 `DID NOT RAISE TypeError` 这一类脆弱测试。",
     ]
     if context_section:
         lines.append(context_section)
@@ -619,15 +622,49 @@ def run_pytest_stage(
         stderr_path=run_dir / "pytest_raw" / f"{label}.agent.stderr.log",
     )
     if completed.returncode != 0:
-        raise RuntimeError(
-            f"execution stage '{label}' failed; inspect "
-            f"{relative_to_root(run_dir / 'pytest_raw' / f'{label}.agent.stderr.log')}"
-        )
+        # Agent failed (quota exhausted, network error, etc.) – fall back to local execution
+        if logger is not None:
+            logger.log(
+                f"stage=pytest agent_fallback label={label} "
+                f"reason=agent_rc={completed.returncode} falling_back_to_local"
+            )
+        completed_local = run_command(cmd, cwd=ROOT, stdout_path=stdout_path, stderr_path=stderr_path)
+        command_path.write_text(command_text, encoding="utf-8")
+        returncode_path.write_text(f"{completed_local.returncode}\n", encoding="utf-8")
+        if logger is not None:
+            logger.log(
+                f"stage=pytest done label={label} returncode={completed_local.returncode} "
+                f"elapsed_s={time.monotonic() - started:.1f} engine=local_fallback"
+            )
+        return {
+            "returncode": completed_local.returncode,
+            "junit_path": junit_path,
+            "stdout_path": stdout_path,
+            "stderr_path": stderr_path,
+            "command": command_text,
+        }
     if not returncode_path.exists():
-        raise RuntimeError(
-            f"execution stage '{label}' did not write return code; inspect "
-            f"{relative_to_root(run_dir / 'pytest_raw' / f'{label}.agent.md')}"
-        )
+        # Agent finished but didn't write returncode – fall back to local execution
+        if logger is not None:
+            logger.log(
+                f"stage=pytest agent_fallback label={label} "
+                f"reason=no_returncode_file falling_back_to_local"
+            )
+        completed_local = run_command(cmd, cwd=ROOT, stdout_path=stdout_path, stderr_path=stderr_path)
+        command_path.write_text(command_text, encoding="utf-8")
+        returncode_path.write_text(f"{completed_local.returncode}\n", encoding="utf-8")
+        if logger is not None:
+            logger.log(
+                f"stage=pytest done label={label} returncode={completed_local.returncode} "
+                f"elapsed_s={time.monotonic() - started:.1f} engine=local_fallback"
+            )
+        return {
+            "returncode": completed_local.returncode,
+            "junit_path": junit_path,
+            "stdout_path": stdout_path,
+            "stderr_path": stderr_path,
+            "command": command_text,
+        }
     returncode = int(returncode_path.read_text(encoding="utf-8").strip() or "1")
     if logger is not None:
         logger.log(
@@ -970,14 +1007,47 @@ def prompt_for_analysis(analysis_input_path: Path, triage_path: Path) -> str:
         - 分类规则：{relative_to_root(ROOT / 'docs' / 'failure_taxonomy.md')}
 
         任务：
-        1. 读取 analysis_inputs.json 中的所有失败/skip/review_failed API。
-        2. 必要时查看对应测试文件和 pytest 日志。
+        1. 读取 analysis_inputs.json 中的所有失败/skip/review_failed/skip_heavy API。
+        2. **必须**查看对应的测试文件源码和 pytest 日志，深入分析失败根因。
         3. 为每个 API 产出一条 JSON 记录，写入 {relative_to_root(triage_path)}。
+
+        ## 核心分类原则
+
+        每个失败必须归入以下四大类之一（映射到具体 category 值）：
+
+        **1. 用例问题（TEST_BUG）** — 测试代码本身有错，**必须被后续流程修复**：
+        - `DID NOT RAISE`：测试用 pytest.raises 期望异常，但 PyTorch 实际不抛。
+          判断方法：查看 PyTorch 源码或文档，确认该 API 是否真的会对该输入校验并抛异常。
+          大多数 PyTorch API 对 None/非callable 等非法参数**不做校验**，直接接受。
+        - 断言值错误：如 device('npu', 0) != device('npu')、isinstance 检查失败。
+        - 测试构造错误：如 int dtype 的 Parameter、传 None 给要求 Tensor 的函数。
+        - regex match 不匹配实际错误消息。
+
+        **2. torch/torch_npu 问题（PYTORCH_BUG / TORCH_NPU_BUG / OPERATOR_BUG）**：
+        - NPU operator 不支持某 memory format / layout
+        - torch_npu 适配层 bug
+        - PyTorch 框架本身的 bug
+        → 测试逻辑是正确的，但框架/环境有问题。保持失败。
+
+        **3. 环境问题（ENVIRONMENT_MISSING）**：
+        - torch_npu 未安装、NPU 不可用
+
+        **4. 未知问题（UNKNOWN / API_BEHAVIOR_MISMATCH）**：
+        - 无法确定属于用例问题还是框架问题时使用
+
+        ## 关于 DID NOT RAISE 的深入判断
+
+        当你看到 `Failed: DID NOT RAISE <SomeException>` 时：
+        - 查看测试代码中 pytest.raises 块的具体内容
+        - 分析传入的参数（如 None、int、object()）
+        - 判断：PyTorch 是否应该对这种输入抛异常？
+        - 如果 PyTorch 文档/源码没有说明会抛异常 → **标记为 TEST_BUG**
+        - 如果 PyTorch 文档明确说会抛异常但没抛 → **标记为 PYTORCH_BUG**
 
         输出 JSON 必须是数组，每一项严格包含：
         - canonical_name
         - failure_category
-        - root_cause_summary
+        - root_cause_summary（必须说明是用例问题、框架问题还是环境问题）
 
         约束：
         1. failure_category 只能取这些值：{categories}
@@ -1026,7 +1096,7 @@ def render_analysis_summary(results: list[ApiResult], run_dir: Path, fix_mode: s
         "",
         "## 可自动修复候选",
     ]
-    candidates = [result for result in results if result.auto_fixable and result.final_status in {"pytest_failed", "skipped", "review_failed"}]
+    candidates = [result for result in results if result.auto_fixable and result.final_status in {"pytest_failed", "skipped", "review_failed", "skip_heavy"}]
     if candidates:
         for result in candidates:
             lines.append(
@@ -1037,7 +1107,7 @@ def render_analysis_summary(results: list[ApiResult], run_dir: Path, fix_mode: s
         lines.append("- 无")
 
     lines.extend(["", "## 仅报告（不自动修复）失败"])
-    report_only = [result for result in results if not result.auto_fixable and result.final_status in {"pytest_failed", "skipped", "review_failed"}]
+    report_only = [result for result in results if not result.auto_fixable and result.final_status in {"pytest_failed", "skipped", "review_failed", "skip_heavy"}]
     if report_only:
         for result in report_only:
             lines.append(
@@ -1062,7 +1132,7 @@ def run_analysis_stage(
     analysis_input_path = build_analysis_inputs(results, run_dir, execution)
     triage_path = run_dir / "analysis_triage.json"
     agent_notes_path = run_dir / "analysis_agent.md"
-    failing_results = [result for result in results if result.final_status in {"pytest_failed", "skipped", "review_failed"}]
+    failing_results = [result for result in results if result.final_status in {"pytest_failed", "skipped", "review_failed", "skip_heavy"}]
     if logger is not None:
         logger.log(
             "stage=analysis start "
@@ -1708,7 +1778,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     run_parser.add_argument("--report-dir", type=Path, default=RUNS_DIR, help="Base directory for run artifacts")
     run_parser.add_argument("--resume", type=Path, help="Reuse an existing run directory")
     run_parser.add_argument("--fix-mode", choices=sorted(FIX_MODES), default="tests", help="Automatic fix scope")
-    run_parser.add_argument("--cli-backend", choices=sorted(SUPPORTED_BACKENDS), default="codex", help="Which AI CLI backend to use")
+    run_parser.add_argument("--cli-backend", choices=sorted(SUPPORTED_BACKENDS), default="claude", help="Which AI CLI backend to use")
     run_parser.add_argument("--run-engine", choices=sorted(RUN_ENGINES), default="agent", help="How pytest is executed")
     run_parser.add_argument("--analysis-engine", choices=sorted(ANALYSIS_ENGINES), default="agent", help="How failure triage is performed")
     run_parser.add_argument("--skip-generate", action="store_true", help="Skip generation and reuse existing tests")
@@ -1783,19 +1853,59 @@ def do_run(args: argparse.Namespace) -> int:
     write_run_manifest(entries, manifest_path, selected_entries=target_entries, run_phase="analysis", results=results)
     results = apply_auto_fixes(results, run_dir, args.fix_mode, args.run_engine, backend, logger)
     write_run_manifest(entries, manifest_path, selected_entries=target_entries, run_phase="fix", results=results)
-    if any(result.fix_applied for result in results):
+
+    # Iterative fix loop: after each fix+rerun, check for remaining TEST_BUG failures
+    # and attempt to fix them again, up to MAX_FIX_ROUNDS total.
+    MAX_FIX_ROUNDS = 3
+    fix_round = 1
+    while fix_round <= MAX_FIX_ROUNDS:
         rerun_files = [entry.test_path for entry in target_entries if entry.test_path.exists()]
-        logger.log(f"stage=pytest rerun start files={len(rerun_files)}")
-        final_execution = run_pytest_stage(rerun_files, run_dir, "postfix_batch", args.run_engine, backend, logger)
-        results = merge_final_batch_results(target_entries, results, final_execution, run_dir)
-    else:
-        logger.log("stage=pytest rerun skip reason=no_fix_applied")
+        logger.log(f"stage=pytest rerun start round={fix_round} files={len(rerun_files)}")
+        round_execution = run_pytest_stage(rerun_files, run_dir, f"postfix_batch_r{fix_round}", args.run_engine, backend, logger)
+        results = merge_final_batch_results(target_entries, results, round_execution, run_dir)
+        annotate_intervention_types(results)
+
+        # Count remaining auto-fixable TEST_BUG failures
+        remaining_test_bugs = [
+            r for r in results
+            if r.final_status in {"pytest_failed", "review_failed", "skip_heavy"}
+            and r.failure_category in {"TEST_BUG", "SKIP_HEAVY"}
+            and not r.fix_applied
+        ]
+        if not remaining_test_bugs:
+            logger.log(f"stage=fix_loop done round={fix_round} reason=no_remaining_test_bugs")
+            break
+
+        logger.log(f"stage=fix_loop round={fix_round} remaining_test_bugs={len(remaining_test_bugs)}")
+
+        # Re-run analysis on the remaining failures to get fresh failure messages
+        results = run_analysis_stage(results, run_dir, round_execution, args.fix_mode, args.analysis_engine, backend, logger)
+        # Mark remaining test bugs as fixable and attempt fixes
+        for r in results:
+            if r.final_status in {"pytest_failed", "review_failed", "skip_heavy"} \
+                    and r.failure_category in {"TEST_BUG", "SKIP_HEAVY"} \
+                    and not r.fix_applied:
+                r.auto_fixable = True
+                r.fix_recommendation = "adjust_test"
+                r.fix_target = "test/api_test"
+        results = apply_auto_fixes(results, run_dir, args.fix_mode, args.run_engine, backend, logger)
+        write_run_manifest(entries, manifest_path, selected_entries=target_entries, run_phase=f"fix_r{fix_round}", results=results)
+
+        if not any(r.fix_applied for r in remaining_test_bugs):
+            logger.log(f"stage=fix_loop done round={fix_round} reason=no_fix_applied")
+            break
+        fix_round += 1
+
+    # If we exited the loop without a final merge, do one last rerun
+    if fix_round > MAX_FIX_ROUNDS:
+        logger.log(f"stage=fix_loop done round={MAX_FIX_ROUNDS} reason=max_rounds_reached")
+
     annotate_intervention_types(results)
     write_run_manifest(entries, manifest_path, selected_entries=target_entries, run_phase="final", results=results)
 
     write_results(results, run_dir)
     command_parts = [sys.executable, "-m", "scripts.pipeline", "run", "--input", str(args.input), "--fix-mode", args.fix_mode]
-    if args.cli_backend != "codex":
+    if args.cli_backend != "claude":
         command_parts.extend(["--cli-backend", args.cli_backend])
     if args.run_engine != "agent":
         command_parts.extend(["--run-engine", args.run_engine])

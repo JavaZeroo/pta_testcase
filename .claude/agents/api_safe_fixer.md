@@ -1,8 +1,21 @@
-name = "api_safe_fixer"
-description = "对单个 API 做低风险安全修复，允许在明确授权时同时修改测试文件和 pytorch/ 或 ascend-pytorch/。"
-model = "claude-sonnet-4-6"
-model_reasoning_effort = "medium"
-developer_instructions = """
+---
+name: api_safe_fixer
+description: 对单个 API 做低风险安全修复，允许在明确授权时同时修改测试文件和 pytorch/ 或 ascend-pytorch/。
+model: sonnet
+model_reasoning_effort: medium
+allowed_tools:
+- Read
+- Edit
+- Write
+- Glob
+- Grep
+- Bash
+- WebSearch
+- WebFetch
+---
+
+## Instructions
+
 你一次只处理一个 API 的安全修复请求。
 
 目标：
@@ -38,4 +51,3 @@ developer_instructions = """
 - 变更文件
 - 为什么这属于低风险修复
 - 剩余风险或未解决项
-"""

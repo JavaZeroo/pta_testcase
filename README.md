@@ -31,12 +31,12 @@ PTA Testcase 是一套面向 **Ascend NPU** 的 PyTorch API 自动化测试框�
 
 ### ✨ 核心特性
 
-- 🤖 **多后端支持** — 通过 `--cli-backend` 无缝切换 [OpenAI Codex CLI](https://github.com/openai/codex) 与 [GitHub Copilot CLI](https://docs.github.com/copilot)
+- 🤖 **多后端支持** — 通过 `--cli-backend` 无缝切换 [Claude Code CLI](https://claude.com/claude-code)、[OpenAI Codex CLI](https://github.com/openai/codex) 与 [GitHub Copilot CLI](https://docs.github.com/copilot)
 - 📁 **一 API 一文件** — 测试文件与 API 严格一一对应，统一放置于 `test/api_test/`
 - 🎯 **功能覆盖优先** — 验证可调用性、返回类型、设备行为、异常场景；不做数值精度对比
 - 🔄 **闭环流水线** — 生成 → 执行 → 分析 → 修复 → 回归，单命令完成
 - 🛡️ **分级修复策略** — `tests` 模式只改测试代码，`safe` 模式允许最小化源码修复
-- ⚙️ **配置同步** — 内置工具在 `.codex/` 与 `.github/` 之间双向同步 Agent/Skill 配置
+- ⚙️ **配置同步** — 内置工具在 `.codex/`、`.github/` 与 `.claude/` 之间同步 Agent/Skill 配置
 
 > 📌 完整的仓库约定和开发规范见 [AGENTS.md](./AGENTS.md)
 
@@ -93,8 +93,11 @@ torch.utils.swap_tensors
 ### 2️⃣ 一键运行
 
 ```bash
-# 使用 Codex CLI（默认）
+# 使用 Claude Code CLI（默认）
 python -m scripts.pipeline run --input apis.txt --fix-mode tests
+
+# 使用 Codex CLI
+python -m scripts.pipeline run --input apis.txt --cli-backend codex --fix-mode tests
 
 # 使用 Copilot CLI
 python -m scripts.pipeline run --input apis.txt --cli-backend copilot --fix-mode tests
@@ -127,7 +130,7 @@ python -m scripts.pipeline run --help
 | 参数 | 阶段 | 默认值 | 说明 |
 |------|------|--------|------|
 | `--input` | 📥 输入 | **必填** | 数据源：`apis.txt` 或 `api_manifest.csv` |
-| `--cli-backend` | 🌐 全局 | `codex` | AI 后端：`codex` \| `copilot` |
+| `--cli-backend` | 🌐 全局 | `claude` | AI 后端：`claude` \| `codex` \| `copilot` |
 | `--report-dir` | 📂 输出 | `runs/` | Run Artifact 存放目录 |
 | `--resume` | 🔄 恢复 | — | 传入已有 Run 目录路径，继续上次运行 |
 | `--skip-generate` | 🤖 生成 | `false` | 跳过生成，复用已有测试文件 |
@@ -277,16 +280,20 @@ torch.Event,torch.Event,test_Event.py,pending,
 |------|----------|------|
 | `.codex/` | OpenAI Codex CLI | TOML agents + SKILL.md |
 | `.github/` | GitHub Copilot CLI | Markdown agents + SKILL.md |
+| `.claude/` | Claude Code CLI | CLAUDE.md + commands/*.md |
 
 ```bash
-# 📤 从 Codex 同步到 Copilot（推荐方向）
+# 📤 从 Codex 同步到 Claude（推荐方向）
+python -m scripts.config_sync --from codex --to claude
+
+# 📤 从 Codex 同步到 Copilot
 python -m scripts.config_sync --from codex --to copilot
 
-# 🔍 查看两端配置差异
+# 🔍 查看各端配置差异
 python -m scripts.config_sync --diff
 
 # 👀 预览操作（不实际写入）
-python -m scripts.config_sync --from codex --to copilot --dry-run
+python -m scripts.config_sync --from codex --to claude --dry-run
 ```
 
 > **💡 提示**：[SKILL.md](https://agentskills.io) 遵循 Agent Skills Open Standard，跨平台通用。Agent 定义格式由同步工具自动转换（TOML ↔ Markdown+YAML）。
@@ -314,7 +321,11 @@ python -m scripts.config_sync --from codex --to copilot --dry-run
 ```text
 pta_testcase/
 ├── 📄 AGENTS.md                    # 仓库约定与开发规范（跨平台）
+├── 📄 CLAUDE.md                    # Claude Code CLI 项目指令
 ├── 📄 README.md                    # 本文件
+├── 📂 .claude/                     # Claude Code CLI 配置
+│   ├── settings.json               #   权限与模型设置
+│   └── commands/*.md               #   自定义命令（Skills）
 ├── 📂 .codex/                      # Codex CLI 配置
 │   ├── agents/*.toml               #   Agent 定义
 │   └── skills/*/SKILL.md           #   Skill 定义
@@ -326,6 +337,7 @@ pta_testcase/
 │   ├── 🐍 pipeline.py              # 主流水线（~1500 行）
 │   ├── 📂 backends/                # CLI 后端抽象层
 │   │   ├── base.py                 #   CliBackend ABC
+│   │   ├── claude.py               #   ClaudeBackend
 │   │   ├── codex.py                #   CodexBackend
 │   │   └── copilot.py              #   CopilotBackend
 │   ├── 🐍 config_sync.py           # 跨 CLI 配置同步工具
@@ -349,7 +361,7 @@ pta_testcase/
 | torch_npu | latest | NPU 后端 |
 | pytest | 7+ | 测试执行 |
 | PyYAML | — | 配置同步 |
-| AI CLI | — | `codex` 或 `copilot`（至少装一个） |
+| AI CLI | — | `claude`、`codex` 或 `copilot`（至少装一个） |
 
 ---
 
@@ -368,6 +380,6 @@ pta_testcase/
 
 **Built with 🤖 AI-assisted development**
 
-[Codex CLI](https://github.com/openai/codex) · [Copilot CLI](https://docs.github.com/copilot) · [Agent Skills Open Standard](https://agentskills.io)
+[Claude Code](https://claude.com/claude-code) · [Codex CLI](https://github.com/openai/codex) · [Copilot CLI](https://docs.github.com/copilot) · [Agent Skills Open Standard](https://agentskills.io)
 
 </div>
