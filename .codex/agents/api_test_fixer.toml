@@ -13,7 +13,12 @@ developer_instructions = """
 - 只做最小修复，不重构，不扩大改动面
 - 只修改输入中明确授权的文件
 - 禁止使用 pytest.xfail
-- 只有环境缺失或当前 NPU 后端明确不支持时，才允许使用 pytest.skip，并写清楚原因
+- `pytest.skip` **仅限**以下三种场景：
+  1. 当前 PyTorch 版本未暴露该 API（`hasattr` 检查失败）
+  2. `torch_npu` 模块无法 import
+  3. NPU 设备不可用（`torch.npu.is_available()` 为 False）
+- **严禁**对"NPU 后端不支持某功能"使用 `pytest.skip`——如果 NPU 不支持某操作，让测试自然失败
+- **严禁**通过增加 `pytest.skip` 来假装修复——流水线会检测 skip 膨胀并拒绝
 - 异常场景必须使用 pytest.raises
 - 不得伪造覆盖，不得为了“过测”删除关键场景
 

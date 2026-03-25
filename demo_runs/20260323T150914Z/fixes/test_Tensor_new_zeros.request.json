@@ -1,0 +1,16 @@
+{
+  "canonical_name": "Tensor.new_zeros",
+  "file_name": "test_Tensor_new_zeros.py",
+  "fix_mode": "tests",
+  "failure_category": "TEST_BUG",
+  "fix_recommendation": "adjust_test",
+  "final_status": "pytest_failed",
+  "pytest_outcome": "failed",
+  "allowed_scopes": [
+    "test/api_test/test_Tensor_new_zeros.py"
+  ],
+  "root_cause_summary": "Test expects TypeError for device=123 but NPU runtime raises RuntimeError (invalid device ID). The pytest.raises(TypeError) catches the wrong exception type.",
+  "failure_messages": [
+    "RuntimeError: exchangeDevice:build/CMakeFiles/torch_npu.dir/compiler_depend.ts:35 NPU function error: c10_npu::SetDevice(d.index()), error code is 107001\n[ERROR] 2026-03-23-23:36:40 (PID:500477, Device:0, RankID:-1) ERR00100 PTA call acl api failed\n[Error]: Invalid device ID.\n        Check whether the device ID is valid.\n[PID: 500477] 2026-03-23-23:36:40.201.362 Invalid_Argument(EE1003): SetDevice failed because value 123 for parameter drv devId is invalid. Expected value: [0, 8).\n        Solution: 1.Check the input parameter range of the function. 2.Check the function invocation relationship.\n        TraceBack (most recent call last):\n        rtSetDevice execution failed, reason=device id error[FUNC:FuncErrorReason][FILE:error_message_manage.cc][LINE:61]\n        open device 123 failed, runtime result = 107001.[FUNC:ReportCallError][FILE:log_inner.cpp][LINE:148]\nnpu_base_tensor = tensor([[1., 2.],\n        [3., 4.]], device='npu:0')\n\n    def test_tensor_new_zeros_invalid_device_type_raises(npu_base_tensor):\n        \"\"\"验证非法 device 类型时通过 pytest.raises 抛出异常。\"\"\"\n        with pytest.raises(TypeError):\n>           npu_base_tensor.new_zeros((2, 2), device=123)\nE           RuntimeError: exchangeDevice:build/CMakeFiles/torch_npu.dir/compiler_depend.ts:35 NPU function error: c10_npu::SetDevice(d.index()), error code is 107001\nE           [ERROR] 2026-03-23-23:36:40 (PID:500477, Device:0, RankID:-1) ERR00100 PTA call acl api failed\nE           [Error]: Invalid device ID.\nE                   Check whether the device ID is valid.\nE           [PID: 500477] 2026-03-23-23:36:40.201.362 Invalid_Argument(EE1003): SetDevice failed because value 123 for parameter drv devId is invalid. Expected value: [0, 8).\nE                   Solution: 1.Check the input parameter range of the function. 2.Check the function invocation relationship.\nE                   TraceBack (most recent call last):\nE                   rtSetDevice execution failed, reason=device id error[FUNC:FuncErrorReason][FILE:error_message_manage.cc][LINE:61]\nE                   open device 123 failed, runtime result = 107001.[FUNC:ReportCallError][FILE:log_inner.cpp][LINE:148]\n\ntest/api_test/test_Tensor_new_zeros.py:181: RuntimeError"
+  ]
+}

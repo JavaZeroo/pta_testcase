@@ -4,6 +4,7 @@ import argparse
 import csv
 import json
 import shlex
+import shutil
 import subprocess
 import sys
 import textwrap
@@ -55,6 +56,7 @@ FAILURE_CATEGORIES = {
     "NONE",
     "TEST_BUG",
     "UNSUPPORTED_ON_NPU",
+    "SKIP_HEAVY",
     "ENVIRONMENT_MISSING",
     "API_BEHAVIOR_MISMATCH",
     "PYTORCH_BUG",
@@ -62,6 +64,7 @@ FAILURE_CATEGORIES = {
     "OPERATOR_BUG",
     "FLAKY_OR_UNSTABLE",
     "INSUFFICIENT_COVERAGE",
+    "NOT_COLLECTED",
     "UNKNOWN",
 }
 
@@ -333,6 +336,32 @@ def run_agent_exec(
     )
 
 
+def collect_session_logs(
+    backend: CliBackend,
+    since: float,
+    dest_dir: Path,
+    logger: PipelineLogger | None = None,
+) -> int:
+    """Copy session log files produced since *since* (epoch time) into *dest_dir*.
+
+    Collects .log, .jsonl, and .json files from the backend's session log
+    directory.  Returns the number of files copied.
+    """
+    log_dir = backend.session_log_dir
+    if log_dir is None or not log_dir.exists():
+        return 0
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    count = 0
+    for pattern in ("*.log", "*.jsonl", "*.json"):
+        for log_file in log_dir.rglob(pattern):
+            if log_file.is_file() and log_file.stat().st_mtime >= since:
+                shutil.copy2(log_file, dest_dir / log_file.name)
+                count += 1
+    if logger and count:
+        logger.log(f"agent_logs collected={count} dir={relative_to_root(dest_dir)}")
+    return count
+
+
 def relative_to_root(path: Path) -> str:
     try:
         return str(path.resolve().relative_to(ROOT))
@@ -354,27 +383,76 @@ def resolve_input_manifest(input_path: Path, run_dir: Path) -> tuple[list[Manife
     raise ValueError(f"unsupported input type for {input_path}; expected .txt or .csv")
 
 
-def prompt_for_generation(manifest_path: Path, run_dir: Path, max_workers: int) -> str:
-    return textwrap.dedent(
-        f"""\
-        使用 batch-npu-api-test skill。
+def prompt_for_generation(manifest_path: Path, run_dir: Path, max_workers: int, context_dir: Path | None = None) -> str:
+    context_section = ""
+    if context_dir is not None and context_dir.exists():
+        ctx_path = relative_to_root(context_dir)
+        context_section = (
+            f"8. 每个 API 在 {ctx_path}/ 下有一个同名 JSON 上下文文件（文件名为\n"
+            f"   canonical_name 中的 `.` 替换为 `_`，后缀 `.json`）。\n"
+            f"   上下文文件包含该 API 的文档签名、参数说明、示例代码，以及 PyTorch 上游的参考测试片段。\n"
+            f"   生成器子代理在生成测试前必须读取对应的上下文文件，并据此决定参数覆盖维度和测试策略。\n"
+        )
+    lines = [
+        f"使用 batch-npu-api-test skill。",
+        f"",
+        f"处理 CSV 文件：{relative_to_root(manifest_path)}",
+        f"",
+        f"执行生成阶段，不要把任务拆成需要我再次确认的多轮对话。",
+        f"要求：",
+        f"1. 只读取 CSV 中 status=pending 的 API。",
+        f"2. 启动 generator/reviewer 并行生成和审查测试文件。",
+        f"3. 可以对测试文件做最小修复，但只允许修改 test/api_test/ 下 CSV 对应的目标文件，且禁止使用 pytest.xfail。",
+        f"4. 不要运行 pytest；外层 pipeline 会统一执行和分析。",
+        f"5. 不要修改其他目录。",
+        f"6. 最终回复写入简洁的生成摘要，包含触达的文件和静态阻塞项。",
+        f"7. 本次批处理的并发预算参考值：{max_workers}。",
+    ]
+    if context_section:
+        lines.append(context_section)
+    lines.extend([
+        f"",
+        f"生成摘要请写到最终消息。外层 pipeline 会保存到：",
+        f"{relative_to_root(run_dir / 'generation_summary.md')}",
+    ])
+    return "\n".join(lines) + "\n"
 
-        处理 CSV 文件：{relative_to_root(manifest_path)}
 
-        执行生成阶段，不要把任务拆成需要我再次确认的多轮对话。
-        要求：
-        1. 只读取 CSV 中 status=pending 的 API。
-        2. 启动 generator/reviewer 并行生成和审查测试文件。
-        3. 可以对测试文件做最小修复，但只允许修改 test/api_test/ 下 CSV 对应的目标文件，且禁止使用 pytest.xfail。
-        4. 不要运行 pytest；外层 pipeline 会统一执行和分析。
-        5. 不要修改其他目录。
-        6. 最终回复写入简洁的生成摘要，包含触达的文件和静态阻塞项。
-        7. 本次批处理的并发预算参考值：{max_workers}。
+def run_context_extraction_stage(
+    manifest_path: Path,
+    run_dir: Path,
+    logger: PipelineLogger | None = None,
+) -> Path:
+    """Build API context files (doc + test references) for all pending APIs.
 
-        生成摘要请写到最终消息。外层 pipeline 会保存到：
-        {relative_to_root(run_dir / "generation_summary.md")}
-        """
-    )
+    Returns the context directory path.
+    """
+    context_dir = run_dir / "api_context"
+    started = time.monotonic()
+    if logger is not None:
+        logger.log(
+            "stage=context_extraction start "
+            f"manifest={relative_to_root(manifest_path)} "
+            f"output_dir={relative_to_root(context_dir)}"
+        )
+    cmd = [
+        sys.executable, "-m", "scripts.build_api_context",
+        "--manifest", str(manifest_path),
+        "--output-dir", str(context_dir),
+        "--all-status",
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(ROOT))
+    if logger is not None:
+        logger.log(
+            "stage=context_extraction done "
+            f"returncode={result.returncode} elapsed_s={time.monotonic() - started:.1f} "
+            f"context_dir={relative_to_root(context_dir)}"
+        )
+    if result.returncode != 0:
+        # Non-fatal: log warning but continue
+        if logger is not None:
+            logger.log(f"stage=context_extraction warning stderr={result.stderr[:500]}")
+    return context_dir
 
 
 def run_generation_stage(
@@ -383,6 +461,7 @@ def run_generation_stage(
     max_workers: int,
     backend: CliBackend,
     logger: PipelineLogger | None = None,
+    context_dir: Path | None = None,
 ) -> None:
     started = time.monotonic()
     if logger is not None:
@@ -393,7 +472,7 @@ def run_generation_stage(
             f"stdout={relative_to_root(run_dir / 'agent_generation.stdout.log')} "
             f"stderr={relative_to_root(run_dir / 'agent_generation.stderr.log')}"
         )
-    prompt = prompt_for_generation(manifest_path, run_dir, max_workers)
+    prompt = prompt_for_generation(manifest_path, run_dir, max_workers, context_dir=context_dir)
     completed = run_agent_exec(
         backend,
         prompt,
@@ -592,12 +671,15 @@ def resolve_entry_for_testcase(testcase: ET.Element, by_stem: dict[str, Manifest
     classname = testcase.attrib.get("classname", "")
     name = testcase.attrib.get("name", "")
     candidates = [file_attr, classname, name]
+    best_match: ManifestEntry | None = None
+    best_length = -1
     for candidate in candidates:
         normalized = candidate.replace("\\", "/")
         for stem, entry in by_stem.items():
-            if stem in normalized or entry.file_name in normalized:
-                return entry
-    return None
+            if (stem in normalized or entry.file_name in normalized) and len(stem) > best_length:
+                best_match = entry
+                best_length = len(stem)
+    return best_match
 
 
 def parse_junit_results(
@@ -667,6 +749,9 @@ def derive_final_status(bucket: dict[str, object], entry: ManifestEntry) -> tupl
         return "pytest_failed", "failed"
     if passed:
         if skipped:
+            # skip_heavy: too many skips relative to passed tests
+            if skipped > passed and skipped >= 2:
+                return "skip_heavy", "skip_heavy"
             return "pytest_passed", "passed_with_skips"
         return "pytest_passed", "passed"
     if skipped:
@@ -696,6 +781,10 @@ def detect_category(text: str, final_status: str) -> str:
         return "TEST_BUG"
     if "coverage" in lowered and any(token in lowered for token in ["missing", "insufficient", "uncovered"]):
         return "INSUFFICIENT_COVERAGE"
+    if final_status == "analyzed":
+        return "NOT_COLLECTED"
+    if final_status == "skip_heavy":
+        return "SKIP_HEAVY"
     if final_status == "skipped":
         return "UNSUPPORTED_ON_NPU"
     if final_status == "pytest_failed":
@@ -706,7 +795,7 @@ def detect_category(text: str, final_status: str) -> str:
 def recommend_fix(category: str, fix_mode: str) -> tuple[str, bool, str]:
     if fix_mode == "off":
         return "manual_followup", False, ""
-    if category == "TEST_BUG":
+    if category in {"TEST_BUG", "SKIP_HEAVY"}:
         return "adjust_test", True, "test/api_test"
     if category in {"ENVIRONMENT_MISSING", "UNSUPPORTED_ON_NPU", "FLAKY_OR_UNSTABLE", "INSUFFICIENT_COVERAGE", "OPERATOR_BUG"}:
         return "manual_followup", False, ""
@@ -723,6 +812,7 @@ def recommend_fix(category: str, fix_mode: str) -> tuple[str, bool, str]:
 # derive_intervention_type.  Defined at module level to avoid repeated creation.
 _CATEGORY_REASON_MAP: dict[str, str] = {
     "UNSUPPORTED_ON_NPU": "api_not_supported_on_npu",
+    "SKIP_HEAVY": "skip_heavy",
     "ENVIRONMENT_MISSING": "environment_setup_required",
     "PYTORCH_BUG": "pytorch_source_bug",
     "TORCH_NPU_BUG": "torch_npu_source_bug",
@@ -730,6 +820,7 @@ _CATEGORY_REASON_MAP: dict[str, str] = {
     "API_BEHAVIOR_MISMATCH": "api_behavior_mismatch",
     "FLAKY_OR_UNSTABLE": "flaky_or_unstable_test",
     "INSUFFICIENT_COVERAGE": "insufficient_test_coverage",
+    "NOT_COLLECTED": "tests_not_collected",
     "TEST_BUG": "test_bug_fix_failed",
 }
 
@@ -748,9 +839,19 @@ def derive_intervention_type(result: ApiResult) -> tuple[str, str]:
     if result.final_status in {"pytest_passed", "fixed"}:
         return "none", ""
 
+    # skip_heavy: too many skips — test should be regenerated with fewer skips
+    if result.final_status == "skip_heavy":
+        if result.fix_applied and result.rerun_status not in {"pytest_passed", "fixed", "not_run"}:
+            return "human_required", "skip_heavy_fix_failed"
+        return "agent_retry", "skip_heavy"
+
     # Test file was never generated/collected → regeneration is worth trying
     if result.final_status == "review_failed" and result.pytest_outcome in {"not_generated", "not_collected"}:
         return "agent_retry", "test_not_generated"
+
+    # Tests existed but were not collected by pytest → retry
+    if result.failure_category == "NOT_COLLECTED":
+        return "agent_retry", "tests_not_collected"
 
     # Test has a TEST_BUG but fix was not yet applied → auto-fix can be attempted
     if result.failure_category == "TEST_BUG" and not result.fix_applied:
@@ -784,6 +885,16 @@ def create_results(entries: list[ManifestEntry], execution: dict[str, object], r
         message = first_non_empty(bucket["messages"]) or entry.notes
         category = detect_category(message, final_status)
         recommendation, auto_fixable, fix_target = recommend_fix(category, fix_mode)
+        skip_heavy_msg = (
+            f"skip 数量({int(bucket['skipped_count'])}) > passed 数量({int(bucket['passed_count'])})，"
+            "过多 skip 不计入通过。应移除功能性 pytest.skip，让 NPU 不支持的测试自然失败。"
+        )
+        if final_status == "skip_heavy":
+            summary = message or skip_heavy_msg
+        elif final_status in {"pytest_passed", "fixed"}:
+            summary = message or "全部测试通过。"
+        else:
+            summary = message or "未捕获到明确的失败详情。"
         result = ApiResult(
             raw_api_name=entry.raw_api_name,
             canonical_name=entry.canonical_name,
@@ -792,9 +903,9 @@ def create_results(entries: list[ManifestEntry], execution: dict[str, object], r
             final_status=final_status,
             pytest_outcome=pytest_outcome,
             failure_category=category,
-            root_cause_summary=message or "未捕获到明确的失败详情。",
+            root_cause_summary=summary,
             initial_failure_category=category,
-            initial_root_cause_summary=message or "未捕获到明确的失败详情。",
+            initial_root_cause_summary=summary,
             failure_messages=list(bucket["messages"]),
             tests_total=int(bucket["tests_total"]),
             passed_count=int(bucket["passed_count"]),
@@ -816,7 +927,7 @@ def create_results(entries: list[ManifestEntry], execution: dict[str, object], r
 def build_analysis_inputs(results: list[ApiResult], run_dir: Path, execution: dict[str, object]) -> Path:
     analysis_items = []
     for result in results:
-        if result.final_status not in {"pytest_failed", "skipped", "review_failed"}:
+        if result.final_status not in {"pytest_failed", "skipped", "review_failed", "analyzed", "skip_heavy"}:
             continue
         analysis_items.append(
             {
@@ -1076,6 +1187,9 @@ def build_fix_request(result: ApiResult, fix_mode: str) -> dict[str, object]:
         "allowed_scopes": allowed_scopes,
         "root_cause_summary": result.root_cause_summary.strip(),
         "failure_messages": result.failure_messages[:3],
+        "passed_count": result.passed_count,
+        "skipped_count": result.skipped_count,
+        "failed_count": result.failed_count,
     }
 
 
@@ -1092,7 +1206,10 @@ def prompt_for_fix(request_path: Path) -> str:
         2. 严格遵守请求文件中的 allowed_scopes。
         3. 禁止使用 pytest.xfail。
         4. 不要运行 pytest；外层 pipeline 会自动回归验证。
-        5. 最终回复写简洁修复摘要。
+        5. 如果 failure_category 为 SKIP_HEAVY，应移除不当的 pytest.skip 调用——
+           NPU 后端不支持的功能应让测试自然失败（RuntimeError/NotImplementedError），
+           而非用 skip 跳过。只保留环境检测类 skip（API 不存在、torch_npu 缺失、NPU 不可用）。
+        6. 最终回复写简洁修复摘要。
         """
     )
 
@@ -1158,7 +1275,27 @@ def run_fix_attempt(
             fix_mode="off",
         )
         rerun_result = rerun_results[0]
-        result.rerun_status = rerun_result.final_status
+        # Skip inflation detection: reject fix if skip count increased
+        pre_fix_skips = result.skipped_count
+        post_fix_skips = rerun_result.skipped_count
+        if post_fix_skips > pre_fix_skips:
+            result.fix_applied = False
+            result.rerun_status = "skip_inflation"
+            result.fix_summary += (
+                f"\n⚠️ 修复被拒绝：skip 数量从 {pre_fix_skips} 增加到 {post_fix_skips}。"
+                "严禁通过增加 pytest.skip 来假装修复。"
+            )
+            # Revert the changed test file
+            test_file = TEST_DIR / result.file_name
+            if test_file.exists():
+                subprocess.run(["git", "checkout", str(test_file)], cwd=str(ROOT), capture_output=True)
+            if logger is not None:
+                logger.log(
+                    f"stage=fix skip_inflation api={result.canonical_name} "
+                    f"pre={pre_fix_skips} post={post_fix_skips} — fix reverted"
+                )
+        else:
+            result.rerun_status = rerun_result.final_status
     else:
         result.rerun_status = "not_run"
     if logger is not None:
@@ -1186,13 +1323,13 @@ def apply_auto_fixes(
     candidates = [
         result
         for result in results
-        if result.final_status in {"pytest_failed", "skipped", "review_failed"} and result.auto_fixable
+        if result.final_status in {"pytest_failed", "skipped", "review_failed", "skip_heavy"} and result.auto_fixable
     ]
     if logger is not None:
         logger.log(f"stage=fix queue candidates={len(candidates)} fix_mode={fix_mode}")
     updated: list[ApiResult] = []
     for result in results:
-        if result.final_status not in {"pytest_failed", "skipped", "review_failed"} or not result.auto_fixable:
+        if result.final_status not in {"pytest_failed", "skipped", "review_failed", "skip_heavy"} or not result.auto_fixable:
             updated.append(result)
             continue
         updated.append(run_fix_attempt(result, run_dir, fix_mode, run_engine, backend, logger))
@@ -1237,7 +1374,7 @@ def render_summary(
     counts: dict[str, int] = {}
     categories: dict[str, int] = {}
     fixed = [result for result in results if result.final_status == "fixed"]
-    failed = [result for result in results if result.final_status in {"pytest_failed", "review_failed"}]
+    failed = [result for result in results if result.final_status in {"pytest_failed", "review_failed", "skip_heavy"}]
     skipped = [result for result in results if result.final_status == "skipped"]
     passed = [result for result in results if result.final_status in {"pytest_passed", "fixed"}]
     for result in results:
@@ -1255,6 +1392,8 @@ def render_summary(
         f"- 结果 JSON：`{relative_to_root(run_dir / 'results.json')}`",
         f"- 结果 CSV：`{relative_to_root(run_dir / 'results.csv')}`",
         f"- 汇总表 CSV：`{relative_to_root(run_dir / 'summary_table.csv')}`",
+        f"- **最终交付报告**：`{relative_to_root(run_dir / 'final_verdict.md')}`",
+        f"- 最终交付 CSV：`{relative_to_root(run_dir / 'final_verdict.csv')}`",
         f"- 生成摘要：`{relative_to_root(run_dir / 'generation_summary.md')}`",
         f"- 分析摘要：`{relative_to_root(run_dir / 'analysis_summary.md')}`",
         "",
@@ -1329,6 +1468,160 @@ def render_summary(
     return "\n".join(lines) + "\n"
 
 
+def _verdict_for_result(result: ApiResult) -> str:
+    """Return a human-readable verdict label for a single API result."""
+    if result.final_status in {"pytest_passed", "fixed"}:
+        return "✅ AI 已确认"
+    if result.intervention_type == "agent_retry":
+        return "🔄 建议重试"
+    if result.intervention_type == "human_required":
+        return "🔧 需人工检查"
+    return "❓ 未知"
+
+
+def _verdict_sort_key(result: ApiResult) -> tuple[int, str]:
+    """Sort results so that items needing attention appear first."""
+    priority = {"🔧 需人工检查": 0, "🔄 建议重试": 1, "❓ 未知": 2, "✅ AI 已确认": 3}
+    verdict = _verdict_for_result(result)
+    return priority.get(verdict, 9), result.canonical_name
+
+
+def render_final_verdict(results: list[ApiResult], run_dir: Path) -> str:
+    """Render a user-facing final verdict report.
+
+    This is the "single page" a user should read after a pipeline run.
+    It answers two questions:
+      1. Which APIs are done (AI confirmed, test file ready)?
+      2. Which APIs still need human attention, and why?
+    """
+    sorted_results = sorted(results, key=_verdict_sort_key)
+
+    confirmed = [r for r in results if _verdict_for_result(r) == "✅ AI 已确认"]
+    needs_retry = [r for r in results if _verdict_for_result(r) == "🔄 建议重试"]
+    needs_human = [r for r in results if _verdict_for_result(r) == "🔧 需人工检查"]
+
+    total = len(results)
+    lines: list[str] = []
+
+    # Header
+    lines.append(f"# 📋 最终交付报告：{run_dir.name}")
+    lines.append("")
+    lines.append(f"> 本报告是流水线运行后的**最终结论**。共 **{total}** 个 API，"
+                 f"其中 **{len(confirmed)}** 个已确认通过、"
+                 f"**{len(needs_retry)}** 个建议重试、"
+                 f"**{len(needs_human)}** 个需人工检查。")
+    lines.append("")
+
+    # Progress bar
+    pct = len(confirmed) * 100 // total if total else 0
+    bar_filled = pct // 2
+    bar_empty = 50 - bar_filled
+    bar = "█" * bar_filled + "░" * bar_empty
+    lines.append(f"**完成进度** `{bar}` **{pct}%** ({len(confirmed)}/{total})")
+    lines.append("")
+
+    # ---- Section 1: needs human attention ----
+    lines.append("---")
+    lines.append("")
+    lines.append(f"## 🔧 需人工检查（{len(needs_human)} 个）")
+    lines.append("")
+    if needs_human:
+        lines.append("| API | 测试文件 | 失败类别 | 原因 | 摘要 |")
+        lines.append("|-----|----------|----------|------|------|")
+        for r in needs_human:
+            summary_text = (r.root_cause_summary or "—").split("\n")[0][:80]
+            lines.append(
+                f"| `{r.canonical_name}` "
+                f"| `{r.file_name}` "
+                f"| `{r.failure_category}` "
+                f"| {r.intervention_reason} "
+                f"| {summary_text} |"
+            )
+    else:
+        lines.append("🎉 无！所有 API 均无需人工介入。")
+    lines.append("")
+
+    # ---- Section 2: retry candidates ----
+    lines.append(f"## 🔄 建议 AI 重试（{len(needs_retry)} 个）")
+    lines.append("")
+    if needs_retry:
+        lines.append("> 这些 API 的测试 Bug 可被 AI 修复，建议用 `--resume` 重跑或手动触发修复。")
+        lines.append("")
+        lines.append("| API | 测试文件 | 原因 | 摘要 |")
+        lines.append("|-----|----------|------|------|")
+        for r in needs_retry:
+            summary_text = (r.root_cause_summary or "—").split("\n")[0][:80]
+            lines.append(
+                f"| `{r.canonical_name}` "
+                f"| `{r.file_name}` "
+                f"| {r.intervention_reason} "
+                f"| {summary_text} |"
+            )
+    else:
+        lines.append("无。")
+    lines.append("")
+
+    # ---- Section 3: confirmed ----
+    lines.append(f"## ✅ AI 已确认通过（{len(confirmed)} 个）")
+    lines.append("")
+    if confirmed:
+        lines.append("> 以下 API 的测试文件已生成且全部通过，可直接使用。")
+        lines.append("")
+        lines.append("<details>")
+        lines.append(f"<summary>展开查看全部 {len(confirmed)} 个已通过的 API</summary>")
+        lines.append("")
+        lines.append("| API | 测试文件 | 测试数 | 通过 | 跳过 | 是否经修复 |")
+        lines.append("|-----|----------|--------|------|------|------------|")
+        for r in sorted(confirmed, key=lambda x: x.canonical_name):
+            fixed_label = "✅ 是" if r.final_status == "fixed" else "—"
+            lines.append(
+                f"| `{r.canonical_name}` "
+                f"| `{r.file_name}` "
+                f"| {r.tests_total} "
+                f"| {r.passed_count} "
+                f"| {r.skipped_count} "
+                f"| {fixed_label} |"
+            )
+        lines.append("")
+        lines.append("</details>")
+    else:
+        lines.append("无。")
+    lines.append("")
+
+    # ---- Section 4: overall stats ----
+    lines.append("---")
+    lines.append("")
+    lines.append("## 📊 统计总览")
+    lines.append("")
+    lines.append(f"| 指标 | 数值 |")
+    lines.append(f"|------|------|")
+    lines.append(f"| API 总数 | {total} |")
+    lines.append(f"| ✅ AI 已确认 | {len(confirmed)} |")
+    lines.append(f"| 🔄 建议重试 | {len(needs_retry)} |")
+    lines.append(f"| 🔧 需人工检查 | {len(needs_human)} |")
+    total_tests = sum(r.tests_total for r in results)
+    total_passed = sum(r.passed_count for r in results)
+    total_skipped = sum(r.skipped_count for r in results)
+    total_failed = sum(r.failed_count for r in results) + sum(r.error_count for r in results)
+    auto_fixed = [r for r in results if r.fix_applied]
+    lines.append(f"| 测试用例总数 | {total_tests} |")
+    lines.append(f"| 通过用例 | {total_passed} |")
+    lines.append(f"| 跳过用例 | {total_skipped} |")
+    lines.append(f"| 失败/错误用例 | {total_failed} |")
+    lines.append(f"| AI 自动修复的 API | {len(auto_fixed)} |")
+    lines.append("")
+
+    # Footer
+    lines.append("---")
+    lines.append("")
+    lines.append(f"*生成时间：{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}*  ")
+    lines.append(f"*Run ID：`{run_dir.name}`*  ")
+    lines.append(f"*详细过程日志见 `summary.md` · 结构化数据见 `final_verdict.csv`*")
+    lines.append("")
+
+    return "\n".join(lines)
+
+
 def write_summary(
     results: list[ApiResult],
     run_dir: Path,
@@ -1340,7 +1633,7 @@ def write_summary(
     summary = render_summary(results, run_dir, input_path, fix_mode, manifest_path, command)
     (run_dir / "summary.md").write_text(summary, encoding="utf-8")
 
-    # Generate the comprehensive CSV summary table
+    # Generate the comprehensive CSV summary table (process-oriented)
     csv_path = run_dir / "summary_table.csv"
     with csv_path.open("w", newline="", encoding="utf-8-sig") as handle:
         writer = csv.writer(handle)
@@ -1359,6 +1652,40 @@ def write_summary(
                 result.rerun_status,
                 result.intervention_type,
                 result.intervention_reason,
+                short_summary,
+            ])
+
+    # Generate user-facing final verdict report and CSV
+    verdict_md = render_final_verdict(results, run_dir)
+    (run_dir / "final_verdict.md").write_text(verdict_md, encoding="utf-8")
+
+    verdict_csv_path = run_dir / "final_verdict.csv"
+    with verdict_csv_path.open("w", newline="", encoding="utf-8-sig") as handle:
+        writer = csv.writer(handle)
+        writer.writerow([
+            "API", "测试文件", "结论", "测试数", "通过", "跳过",
+            "失败类别", "是否经修复", "需要操作", "摘要",
+        ])
+        for result in sorted(results, key=_verdict_sort_key):
+            verdict = _verdict_for_result(result)
+            fixed_val = "是" if result.fix_applied else "否"
+            action = {
+                "✅ AI 已确认": "无需操作",
+                "🔄 建议重试": "建议重跑",
+                "🔧 需人工检查": "需人工处理",
+                "❓ 未知": "待定",
+            }.get(verdict, "待定")
+            short_summary = (result.root_cause_summary or "").replace("\n", " ")[:120]
+            writer.writerow([
+                result.canonical_name,
+                result.file_name,
+                verdict,
+                result.tests_total,
+                result.passed_count,
+                result.skipped_count,
+                result.failure_category,
+                fixed_val,
+                action,
                 short_summary,
             ])
 
@@ -1421,7 +1748,8 @@ def do_run(args: argparse.Namespace) -> int:
     )
 
     if not args.skip_generate:
-        run_generation_stage(manifest_path, run_dir, args.max_workers, backend, logger)
+        context_dir = run_context_extraction_stage(manifest_path, run_dir, logger)
+        run_generation_stage(manifest_path, run_dir, args.max_workers, backend, logger, context_dir=context_dir)
         write_run_manifest(entries, manifest_path, selected_entries=target_entries, run_phase="generated")
     else:
         (run_dir / "generation_summary.md").write_text(
@@ -1485,27 +1813,18 @@ def do_run(args: argparse.Namespace) -> int:
         command_parts.append("--debug")
     command_text = " ".join(shlex.quote(part) for part in command_parts)
     write_summary(results, run_dir, args.input, args.fix_mode, manifest_path, command_text)
-    
-    if args.debug:
-        import shutil
-        debug_dir = run_dir / "debug_logs"
-        debug_dir.mkdir(parents=True, exist_ok=True)
-        session_log_dir = backend.session_log_dir
-        if session_log_dir is not None and session_log_dir.exists():
-            count = 0
-            for jsonl_file in session_log_dir.rglob("*.jsonl"):
-                if jsonl_file.is_file() and jsonl_file.stat().st_mtime >= start_time:
-                    shutil.copy2(jsonl_file, debug_dir / jsonl_file.name)
-                    count += 1
-            logger.log(f"debug_logs_collected count={count} in {relative_to_root(debug_dir)}")
+
+    # Always collect agent session logs for traceability
+    collect_session_logs(backend, start_time, run_dir / "agent_logs", logger)
 
     logger.log(
         "pipeline done "
         f"results_json={relative_to_root(run_dir / 'results.json')} "
         f"results_csv={relative_to_root(run_dir / 'results.csv')} "
-        f"summary={relative_to_root(run_dir / 'summary.md')}"
+        f"summary={relative_to_root(run_dir / 'summary.md')} "
+        f"final_verdict={relative_to_root(run_dir / 'final_verdict.md')}"
     )
-    print(relative_to_root(run_dir / "summary.md"))
+    print(relative_to_root(run_dir / "final_verdict.md"))
     return 0
 
 

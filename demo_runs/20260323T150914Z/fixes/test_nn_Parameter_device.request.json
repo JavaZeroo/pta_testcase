@@ -1,0 +1,16 @@
+{
+  "canonical_name": "torch.nn.Parameter.device",
+  "file_name": "test_nn_Parameter_device.py",
+  "fix_mode": "tests",
+  "failure_category": "TEST_BUG",
+  "fix_recommendation": "adjust_test",
+  "final_status": "pytest_failed",
+  "pytest_outcome": "failed",
+  "allowed_scopes": [
+    "test/api_test/test_nn_Parameter_device.py"
+  ],
+  "root_cause_summary": "Test asserts param.to(npu_device) returns nn.Parameter, but PyTorch Parameter.to() returns a plain Tensor (with grad_fn) when moving to a different device. The isinstance check is an incorrect assumption about .to() semantics.",
+  "failure_messages": [
+    "AssertionError: assert False\n +  where False = isinstance(tensor([[1., 1., 1.],\\n        [1., 1., 1.]], device='npu:0', grad_fn=<ToCopyBackward0>), <class 'torch.nn.parameter.Parameter'>)\n +    where <class 'torch.nn.parameter.Parameter'> = nn.Parameter\nnpu_device = device(type='npu', index=0)\n\n    def test_parameter_device_after_to_npu_keeps_npu_device(npu_device):\n        \"\"\"验证对象经 .to('npu') 后，迁移结果仍为 Parameter，且 device 信息正确。\"\"\"\n        param = nn.Parameter(torch.ones((2, 3)))\n        moved = param.to(npu_device)\n    \n>       assert isinstance(moved, nn.Parameter)\nE       AssertionError: assert False\nE        +  where False = isinstance(tensor([[1., 1., 1.],\\n        [1., 1., 1.]], device='npu:0', grad_fn=<ToCopyBackward0>), <class 'torch.nn.parameter.Parameter'>)\nE        +    where <class 'torch.nn.parameter.Parameter'> = nn.Parameter\n\ntest/api_test/test_nn_Parameter_device.py:99: AssertionError"
+  ]
+}

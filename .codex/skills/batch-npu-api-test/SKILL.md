@@ -17,8 +17,13 @@ description:
 工作流：
 1. 读取 CSV 中 status=pending 的行。
 2. 对每一行启动一个 api_test_generator 子代理并行生成测试文件。
+   - **重要**：如果 pipeline 提示了 api_context 目录，在启动 generator 前，
+     读取 `api_context/{canonical_name 中 . 替换为 _}.json` 文件，将其中的
+     `doc`（API 文档、签名、参数说明、示例代码）和 `test_references`（上游参考测试片段）
+     作为上下文传递给 generator 子代理的 prompt。
 3. 等待全部 generator 完成，收集生成结果。
 4. 对新生成或修改过的测试文件启动 api_test_reviewer 子代理并行审查。
+   - reviewer 同样应接收 API 上下文信息以判断覆盖完整性。
 5. 对 reviewer 判定为不通过的文件，进行最小修复：
    - 启动 api_test_fixer 子代理处理单文件修复
    - 只修复失败项
@@ -38,5 +43,10 @@ description:
 - 关注功能行为和接口覆盖，不做数值精度校验
 - 异常场景必须使用 pytest.raises
 - 禁止使用 pytest.xfail
-- 只有环境缺失或当前 NPU 后端明确不支持时才允许 pytest.skip
+- `pytest.skip` **仅限**以下三种场景：
+  1. 当前 PyTorch 版本未暴露该 API
+  2. `torch_npu` 无法 import
+  3. NPU 设备不可用
+- **严禁**对"NPU 后端不支持某功能"使用 pytest.skip——让测试自然失败
+- 当 skip > passed 且 skip >= 2 时，流水线判定为 skip_heavy，不计入通过
 - 文件头注释必须写明测试目的、API 名称、覆盖入参

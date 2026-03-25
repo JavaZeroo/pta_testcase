@@ -106,14 +106,14 @@ bash scripts/run_api_batch.sh apis.txt --fix-mode tests
 ### 3️⃣ 查看结果
 
 ```bash
-# 批次总览
+# 🎯 最终交付报告（优先看这个！）
+cat runs/<run_id>/final_verdict.md
+
+# 结构化交付数据（可导入 Excel / Pandas）
+cat runs/<run_id>/final_verdict.csv
+
+# 流水线过程摘要（调试用）
 cat runs/<run_id>/summary.md
-
-# 失败诊断详情
-cat runs/<run_id>/analysis_summary.md
-
-# 结构化结果（可导入 Excel / Pandas）
-cat runs/<run_id>/results.csv
 ```
 
 ---
@@ -215,6 +215,8 @@ torch.Event,torch.Event,test_Event.py,pending,
 
 | 工件 | 说明 |
 |------|------|
+| 🎯 `final_verdict.md` | **最终交付报告**：哪些 API 已确认、哪些需人工处理 |
+| 📊 `final_verdict.csv` | 交付结论表（按优先级排序，可导入 Excel） |
 | 📋 `manifest.csv` | 实时进度表，随流水线各阶段持续回写 |
 | 📝 `pipeline.log` | 流水线阶段日志 |
 | 🤖 `generation_summary.md` | AI 生成阶段摘要 |

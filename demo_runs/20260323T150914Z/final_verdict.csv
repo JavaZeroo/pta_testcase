@@ -1,0 +1,54 @@
+﻿API,测试文件,结论,测试数,通过,跳过,失败类别,是否经修复,需要操作,摘要
+torch._dynamo.compiled_autograd.compiled_autograd_enabled_force_eager,test__dynamo_compiled_autograd_compiled_autograd_enabled_force_eager.py,🔧 需人工检查,0,0,0,UNKNOWN,否,需人工处理,未捕获到明确的失败详情。
+torch._dynamo.config.skip_fsdp_hooks,test__dynamo_config_skip_fsdp_hooks.py,🔧 需人工检查,0,0,0,UNKNOWN,否,需人工处理,未捕获到明确的失败详情。
+torch.nn.Parameter.device.type,test_nn_Parameter_device_type.py,🔧 需人工检查,0,0,0,UNKNOWN,否,需人工处理,未捕获到明确的失败详情。
+Tensor.new_empty,test_Tensor_new_empty.py,✅ AI 已确认,55,55,0,NONE,否,无需操作,未捕获到明确的失败详情。
+Tensor.new_zeros,test_Tensor_new_zeros.py,✅ AI 已确认,56,56,0,NONE,是,无需操作,未捕获到明确的失败详情。
+Tensor.register_hook,test_Tensor_register_hook.py,✅ AI 已确认,8,8,0,NONE,否,无需操作,未捕获到明确的失败详情。
+Tensor.requires_grad,test_Tensor_requires_grad.py,✅ AI 已确认,8,8,0,NONE,否,无需操作,未捕获到明确的失败详情。
+Tensor.untyped_storage,test_Tensor_untyped_storage.py,✅ AI 已确认,32,32,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch.Event,test_Event.py,✅ AI 已确认,9,5,4,NONE,否,无需操作,当前 NPU 后端不支持 Event.elapsed_time，跳过相关用例。 /home/l00913161/projects/pta_testcase/test/api_test/test_Event.py:83: 当前 NPU 后端不
+torch._C.DispatchKey.Functionalize,test__C_DispatchKey_Functionalize.py,✅ AI 已确认,22,22,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch._C.DispatchKeySet,test__C_DispatchKeySet.py,✅ AI 已确认,21,21,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch._C._ExcludeDispatchKeyGuard,test__C__ExcludeDispatchKeyGuard.py,✅ AI 已确认,16,16,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch.__future__.get_swap_module_params_on_conversion,test___future___get_swap_module_params_on_conversion.py,✅ AI 已确认,8,8,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch._dynamo.compiled_autograd.compiled_autograd_enabled,test__dynamo_compiled_autograd_compiled_autograd_enabled.py,✅ AI 已确认,5,5,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch._dynamo.compiled_autograd.in_compiled_autograd_region,test__dynamo_compiled_autograd_in_compiled_autograd_region.py,✅ AI 已确认,2,2,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch._dynamo.comptime.comptime.print,test__dynamo_comptime_comptime_print.py,✅ AI 已确认,11,11,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch._dynamo.config,test__dynamo_config.py,✅ AI 已确认,8,8,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch._from_functional_tensor,test__from_functional_tensor.py,✅ AI 已确认,17,17,0,NONE,是,无需操作,未捕获到明确的失败详情。
+torch._logging.warning_once,test__logging_warning_once.py,✅ AI 已确认,12,12,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch._prims_common.make_contiguous_strides_for,test__prims_common_make_contiguous_strides_for.py,✅ AI 已确认,15,15,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch._running_with_deploy,test__running_with_deploy.py,✅ AI 已确认,10,10,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch._sync,test__sync.py,✅ AI 已确认,14,14,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch.autograd.Variable._execution_engine.queue_callback,test_autograd_Variable__execution_engine_queue_callback.py,✅ AI 已确认,8,8,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch.autograd._unsafe_preserve_version_counter,test_autograd__unsafe_preserve_version_counter.py,✅ AI 已确认,13,13,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch.autograd.graph._MultiHandle,test_autograd_graph__MultiHandle.py,✅ AI 已确认,9,9,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch.compiler.is_compiling,test_compiler_is_compiling.py,✅ AI 已确认,3,3,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch.dtype,test_dtype.py,✅ AI 已确认,45,45,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch.fx.node.has_side_effect,test_fx_node_has_side_effect.py,✅ AI 已确认,13,13,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch.library,test_library.py,✅ AI 已确认,5,5,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch.library.Library,test_library_Library.py,✅ AI 已确认,7,7,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch.library.impl,test_library_impl.py,✅ AI 已确认,42,42,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch.nn.Module.__setattr__,test_nn_Module___setattr__.py,✅ AI 已确认,15,15,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch.nn.Module._parameters,test_nn_Module__parameters.py,✅ AI 已确认,11,11,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch.nn.Module.buffers,test_nn_Module_buffers.py,✅ AI 已确认,7,7,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch.nn.Module.modules,test_nn_Module_modules.py,✅ AI 已确认,7,7,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch.nn.Module.named_modules,test_nn_Module_named_modules.py,✅ AI 已确认,8,8,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch.nn.Module.named_parameters,test_nn_Module_named_parameters.py,✅ AI 已确认,12,12,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch.nn.Module.register_forward_hook,test_nn_Module_register_forward_hook.py,✅ AI 已确认,12,12,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch.nn.Module.register_forward_pre_hook,test_nn_Module_register_forward_pre_hook.py,✅ AI 已确认,5,5,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch.nn.Module.register_load_state_dict_post_hook,test_nn_Module_register_load_state_dict_post_hook.py,✅ AI 已确认,8,8,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch.nn.Parameter.device,test_nn_Parameter_device.py,✅ AI 已确认,38,38,0,NONE,是,无需操作,未捕获到明确的失败详情。
+torch.nn.Parameter.dtype,test_nn_Parameter_dtype.py,✅ AI 已确认,11,11,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch.nn.Parameter.grad,test_nn_Parameter_grad.py,✅ AI 已确认,9,9,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch.nn.Parameter.is_contiguous,test_nn_Parameter_is_contiguous.py,✅ AI 已确认,6,6,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch.nn.Parameter.itemsize,test_nn_Parameter_itemsize.py,✅ AI 已确认,12,12,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch.nn.Parameter.ndim,test_nn_Parameter_ndim.py,✅ AI 已确认,7,7,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch.nn.Parameter.size,test_nn_Parameter_size.py,✅ AI 已确认,27,27,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch.nn.Parameter.stride,test_nn_Parameter_stride.py,✅ AI 已确认,16,16,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch.utils._python_dispatch.is_traceable_wrapper_subclass,test_utils__python_dispatch_is_traceable_wrapper_subclass.py,✅ AI 已确认,17,17,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch.utils._pytree.tree_flatten,test_utils__pytree_tree_flatten.py,✅ AI 已确认,16,16,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch.utils._pytree.tree_map,test_utils__pytree_tree_map.py,✅ AI 已确认,11,11,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch.utils._pytree.tree_unflatten,test_utils__pytree_tree_unflatten.py,✅ AI 已确认,16,16,0,NONE,否,无需操作,未捕获到明确的失败详情。
+torch.utils.swap_tensors,test_utils_swap_tensors.py,✅ AI 已确认,13,13,0,NONE,否,无需操作,未捕获到明确的失败详情。

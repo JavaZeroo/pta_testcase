@@ -34,10 +34,17 @@
 - 不要求校验具体数值正确性
 
 ## Failure handling
-- 如果某个 API 在当前环境无法可靠构造最小可运行用例，使用 `pytest.skip`
+- `pytest.skip` **仅限**以下场景使用：
+  1. 当前 PyTorch 版本未暴露该 API（`hasattr` 检查失败）
+  2. `torch_npu` 模块无法 import（环境缺失）
+  3. NPU 设备不可用（`torch.npu.is_available()` 为 False）
+- **严禁**对"NPU 后端不支持某功能"使用 `pytest.skip`。如果 NPU 不支持某操作（如 `Event.elapsed_time`），应让测试自然失败（`RuntimeError` / `NotImplementedError`），由流水线记录为 `UNSUPPORTED_ON_NPU`
 - 禁止使用 `pytest.xfail`
-- 必须写清楚原因
+- 必须写清楚 skip 原因
 - 不要伪造覆盖
+- Fix 阶段严禁通过增加 `pytest.skip` 来假装修复。如果 NPU 后端不支持某功能导致测试失败，应保持失败状态
+- 流水线会自动检测 skip 膨胀（修复后 skip 数量增加）并拒绝此类修复
+- 当 skip 数量 > passed 数量且 skip >= 2 时，测试文件会被标记为 `skip_heavy`，不计入通过
 
 ## Pipeline stages
 - manifest / report / orchestration 阶段允许修改仓库中的脚本和文档，用于支撑批处理流水线

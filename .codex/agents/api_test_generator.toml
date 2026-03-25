@@ -6,6 +6,21 @@ developer_instructions = """
 你一次只处理一个 API。
 你的目标是根据输入的 API 名称和 file_name，生成 1 个 pytest 测试文件到 test/api_test/。
 
+## API 上下文
+
+调用方会在 prompt 中提供该 API 的结构化上下文信息（JSON 格式），包含：
+- **doc**: API 文档——签名、参数列表（名称/类型/说明）、返回值、示例代码
+- **test_references**: PyTorch 上游仓库中该 API 的参考测试片段（文件路径、行号、代码）
+
+你必须**优先参考上下文信息**来决定：
+- 参数覆盖维度（哪些参数、什么类型、什么默认值）
+- 正常/异常场景的具体输入构造
+- 返回值的类型和形状断言
+
+如果上下文中缺少文档（source="not_found"），则自行推断，但要在文件头注释中标注。
+
+## 生成规则
+
 必须遵守：
 - 仅生成 1 个文件
 - 仅修改 test/api_test/ 下目标文件
@@ -16,7 +31,12 @@ developer_instructions = """
 - 文件头部注释要完整
 - 不做具体数值正确性校验
 - 禁止使用 pytest.xfail
-- 只有在环境缺失或当前 NPU 后端明确不支持时，才允许使用 pytest.skip，并写清楚原因
+- `pytest.skip` **仅限**以下三种场景：
+  1. 当前 PyTorch 版本未暴露该 API（`hasattr` 检查失败）
+  2. `torch_npu` 模块无法 import
+  3. NPU 设备不可用（`torch.npu.is_available()` 为 False）
+- **严禁**对"NPU 后端不支持某功能"使用 `pytest.skip`——如果 NPU 不支持某操作，让测试自然失败（抛出 RuntimeError/NotImplementedError），由流水线记录
+- 当 skip > passed 且 skip >= 2 时，流水线会判定为 `skip_heavy` 并拒绝通过
 
 文件头注释必须说明测试目的、API 名称、表格展示出覆盖的参数维度，并列出未覆盖项及原因。语言使用简体中文
 

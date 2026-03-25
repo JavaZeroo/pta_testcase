@@ -1,0 +1,1371 @@
+﻿raw_api_name,canonical_name,file_name,stage,final_status,pytest_outcome,failure_category,root_cause_summary,initial_failure_category,initial_root_cause_summary,failure_messages,tests_total,passed_count,skipped_count,xfailed_count,failed_count,error_count,fix_recommendation,auto_fixable,fix_applied,fix_target,fix_summary,fix_artifact,changed_files,rerun_status,report_path,intervention_type,intervention_reason
+Tensor.new_empty,Tensor.new_empty,test_Tensor_new_empty.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],55,55,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+Tensor.new_zeros,Tensor.new_zeros,test_Tensor_new_zeros.py,final,fixed,passed,NONE,未捕获到明确的失败详情。,TEST_BUG,Test expects TypeError for device=123 but NPU runtime raises RuntimeError (invalid device ID). The pytest.raises(TypeError) catches the wrong exception type.,[],56,56,0,0,0,0,adjust_test,True,True,test/api_test,"# 🤖 Copilot CLI Session
+
+> [!NOTE]
+> - **Session ID:** `b0fe97f1-065c-49ba-ad58-7b7b5d58ff25`  
+> - **Started:** 3/23/2026, 11:39:36 PM  
+> - **Duration:** 1m 42s  
+> - **Exported:** 3/23/2026, 11:41:19 PM  
+
+---
+
+<sub>⏱️ 34s</sub>
+
+### 👤 User
+
+使用 single-api-fix skill。
+
+处理修复请求文件：runs/20260323T150914Z/fixes/test_Tensor_new_zeros.request.json
+
+执行修复阶段，不要等待额外确认。
+要求：
+1. 只修复该请求对应的单个 API。
+2. 严格遵守请求文件中的 allowed_scopes。
+3. 禁止使用 pytest.xfail。
+4. 不要运行 pytest；外层 pipeline 会自动回归验证。
+5. 最终回复写简洁修复摘要。
+
+
+---
+
+<sub>⏱️ 41s</sub>
+
+### ✅ `skill`
+
+**single-api-fix**
+
+<details>
+<summary>Arguments</summary>
+
+```json
+{
+  ""skill"": ""single-api-fix""
+}
+```
+
+</details>
+
+```
+Skill ""single-api-fix"" loaded successfully. Follow the instructions in the skill context.
+```
+
+
+---
+
+<sub>⏱️ 47s</sub>
+
+### ✅ `bash`
+
+**Read fix request JSON**
+
+$ cat runs/20260323T150914Z/fixes/test_Tensor_new_zeros.request.json
+
+<details>
+<summary>17 lines</summary>
+
+```
+{
+  ""canonical_name"": ""Tensor.new_zeros"",
+  ""file_name"": ""test_Tensor_new_zeros.py"",
+  ""fix_mode"": ""tests"",
+  ""failure_category"": ""TEST_BUG"",
+  ""fix_recommendation"": ""adjust_test"",
+  ""final_status"": ""pytest_failed"",
+  ""pytest_outcome"": ""failed"",
+  ""allowed_scopes"": [
+    ""test/api_test/test_Tensor_new_zeros.py""
+  ],
+  ""root_cause_summary"": ""Test expects TypeError for device=123 but NPU runtime raises RuntimeError (invalid device ID). The pytest.raises(TypeError) catches the wrong exception type."",
+  ""failure_messages"": [
+    ""RuntimeError: exchangeDevice:build/CMakeFiles/torch_npu.dir/compiler_depend.ts:35 NPU function error: c10_npu::SetDevice(d.index()), error code is 107001\n[ERROR] 2026-03-23-23:36:40 (PID:500477, Device:0, RankID:-1) ERR00100 PTA call acl api failed\n[Error]: Invalid device ID.\n        Check whether the device ID is valid.\n[PID: 500477] 2026-03-23-23:36:40.201.362 Invalid_Argument(EE1003): SetDevice failed because value 123 for parameter drv devId is invalid. Expected value: [0, 8).\n        Solution: 1.Check the input parameter range of the function. 2.Check the function invocation relationship.\n        TraceBack (most recent call last):\n        rtSetDevice execution failed, reason=device id error[FUNC:FuncErrorReason][FILE:error_message_manage.cc][LINE:61]\n        open device 123 failed, runtime result = 107001.[FUNC:ReportCallError][FILE:log_inner.cpp][LINE:148]\nnpu_base_tensor = tensor([[1., 2.],\n        [3., 4.]], device='npu:0')\n\n    def test_tensor_new_zeros_invalid_device_type_raises(npu_base_tensor):\n        \""\""\""验证非法 device 类型时通过 pytest.raises 抛出异常。\""\""\""\n        with pytest.raises(TypeError):\n>           npu_base_tensor.new_zeros((2, 2), device=123)\nE           RuntimeError: exchangeDevice:build/CMakeFiles/torch_npu.dir/compiler_depend.ts:35 NPU function error: c10_npu::SetDevice(d.index()), error code is 107001\nE           [ERROR] 2026-03-23-23:36:40 (PID:500477, Device:0, RankID:-1) ERR00100 PTA call acl api failed\nE           [Error]: Invalid device ID.\nE                   Check whether the device ID is valid.\nE           [PID: 500477] 2026-03-23-23:36:40.201.362 Invalid_Argument(EE1003): SetDevice failed because value 123 for parameter drv devId is invalid. Expected value: [0, 8).\nE                   Solution: 1.Check the input parameter range of the function. 2.Check the function invocation relationship.\nE                   TraceBack (most recent call last):\nE                   rtSetDevice execution failed, reason=device id error[FUNC:FuncErrorReason][FILE:error_message_manage.cc][LINE:61]\nE                   open device 123 failed, runtime result = 107001.[FUNC:ReportCallError][FILE:log_inner.cpp][LINE:148]\n\ntest/api_test/test_Tensor_new_zeros.py:181: RuntimeError""
+  ]
+}
+<exited with exit code 0>
+```
+
+</details>
+
+
+---
+
+<sub>⏱️ 1m 4s</sub>
+
+### 📦 task (Completed)
+
+### ✅ `view`
+
+**view the file at /home/l00913161/projects/pta_testcase/test/api_test/test_Tensor_new_zeros.py.**
+
+/home/l00913161/projects/pta_testcase/test/api_test/test_Tensor_new_zeros.py (lines 160-195)
+
+<details>
+<summary>36 lines</summary>
+
+```
+160.         ((-1,), RuntimeError),
+161.         ((1, -2), RuntimeError),
+162.         (""abc"", TypeError),
+163.         ((1, ""x""), TypeError),
+164.     ],
+165. )
+166. def test_tensor_new_zeros_invalid_size_raises(npu_base_tensor, bad_size, expected_exc):
+167.     """"""验证 size 非法时通过 pytest.raises 抛出异常。""""""
+168.     with pytest.raises(expected_exc):
+169.         npu_base_tensor.new_zeros(bad_size)
+170. 
+171. 
+172. def test_tensor_new_zeros_invalid_dtype_type_raises(npu_base_tensor):
+173.     """"""验证非法 dtype 类型时通过 pytest.raises 抛出异常。""""""
+174.     with pytest.raises(TypeError):
+175.         npu_base_tensor.new_zeros((2, 2), dtype=""float32"")
+176. 
+177. 
+178. def test_tensor_new_zeros_invalid_device_type_raises(npu_base_tensor):
+179.     """"""验证非法 device 类型时通过 pytest.raises 抛出异常。""""""
+180.     with pytest.raises(TypeError):
+181.         npu_base_tensor.new_zeros((2, 2), device=123)
+182. 
+183. 
+184. @pytest.mark.parametrize(
+185.     ""kwargs"",
+186.     [
+187.         {""requires_grad"": ""true""},
+188.         {""layout"": ""strided""},
+189.         {""pin_memory"": ""false""},
+190.     ],
+191. )
+192. def test_tensor_new_zeros_invalid_optional_kwarg_types_raise(npu_base_tensor, kwargs):
+193.     """"""验证 requires_grad/layout/pin_memory 非法类型时通过 pytest.raises 抛出异常。""""""
+194.     with pytest.raises(TypeError):
+195.         npu_base_tensor.new_zeros((2, 2), **kwargs)
+```
+
+</details>
+
+
+### ✅ `apply_patch`
+
+<details>
+<summary>Arguments</summary>
+
+```json
+""*** Begin Patch\n*** Update File: /home/l00913161/projects/pta_testcase/test/api_test/test_Tensor_new_zeros.py\n@@\n def test_tensor_new_zeros_invalid_device_type_raises(npu_base_tensor):\n     \""\""\""验证非法 device 类型时通过 pytest.raises 抛出异常。\""\""\""\n-    with pytest.raises(TypeError):\n+    with pytest.raises((TypeError, RuntimeError)):\n         npu_base_tensor.new_zeros((2, 2), device=123)\n*** End Patch\n""
+```
+
+</details>
+
+```
+Modified 1 file(s): /home/l00913161/projects/pta_testcase/test/api_test/test_Tensor_new_zeros.py
+```
+
+
+### 💬 Copilot
+
+修改摘要
+- 将 `test_tensor_new_zeros_invalid_device_type_raises` 中的异常断言从 `pytest.raises(TypeError)` 调整为 `pytest.raises((TypeError, RuntimeError))`
+- 这样可同时兼容 CPU 场景下的 `TypeError` 和 NPU 运行时下的 `RuntimeError`
+
+变更文件
+- `test/api_test/test_Tensor_new_zeros.py`
+
+剩余风险或未解决项
+- 未运行 pytest（按要求未执行）
+- 当前修复仅覆盖该测试中 `device=123` 的异常类型差异，未扩大修改范围
+
+
+---
+
+<sub>⏱️ 1m 34s</sub>
+
+### 💬 Copilot
+
+Let me verify the fix was applied correctly:
+
+---
+
+<sub>⏱️ 1m 35s</sub>
+
+### ✅ `bash`
+
+**Verify the fix was applied**
+
+$ grep -n 'pytest.raises' test/api_test/test_Tensor_new_zeros.py
+
+<details>
+<summary>11 lines</summary>
+
+```
+152:    with pytest.raises((RuntimeError, TypeError, NotImplementedError)):
+167:    """"""验证 size 非法时通过 pytest.raises 抛出异常。""""""
+168:    with pytest.raises(expected_exc):
+173:    """"""验证非法 dtype 类型时通过 pytest.raises 抛出异常。""""""
+174:    with pytest.raises(TypeError):
+179:    """"""验证非法 device 类型时通过 pytest.raises 抛出异常。""""""
+180:    with pytest.raises((TypeError, RuntimeError)):
+193:    """"""验证 requires_grad/layout/pin_memory 非法类型时通过 pytest.raises 抛出异常。""""""
+194:    with pytest.raises(TypeError):
+200:    with pytest.raises(RuntimeError):
+<exited with exit code 0>
+```
+
+</details>
+
+
+---
+
+<sub>⏱️ 1m 42s</sub>
+
+### 💬 Copilot
+
+Fix applied correctly at line 180.
+
+**修复摘要：**
+- **文件：** `test/api_test/test_Tensor_new_zeros.py`
+- **改动：** 第180行 `pytest.raises(TypeError)` → `pytest.raises((TypeError, RuntimeError))`
+- **原因：** NPU 运行时对 `device=123` 抛出 `RuntimeError`（非法设备ID），而非 CPU 上的 `TypeError`。兼容两种异常类型。
+- **剩余风险：** 无，最小改动，等待 pipeline 回归验证。
+
+---
+
+<sub>Generated by [GitHub Copilot CLI](https://github.com/features/copilot/cli)</sub>",runs/20260323T150914Z/fixes/test_Tensor_new_zeros.md,"[""test/api_test/test_Tensor_new_zeros.py""]",pytest_passed,runs/20260323T150914Z/summary.md,none,
+Tensor.register_hook,Tensor.register_hook,test_Tensor_register_hook.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],8,8,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+Tensor.requires_grad,Tensor.requires_grad,test_Tensor_requires_grad.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],8,8,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+Tensor.untyped_storage,Tensor.untyped_storage,test_Tensor_untyped_storage.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],32,32,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch.__future__.get_swap_module_params_on_conversion,torch.__future__.get_swap_module_params_on_conversion,test___future___get_swap_module_params_on_conversion.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],8,8,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch._sync,torch._sync,test__sync.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],14,14,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch.autograd.Variable._execution_engine.queue_callback,torch.autograd.Variable._execution_engine.queue_callback,test_autograd_Variable__execution_engine_queue_callback.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],8,8,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch.compiler.is_compiling,torch.compiler.is_compiling,test_compiler_is_compiling.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],3,3,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch.dtype,torch.dtype,test_dtype.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],45,45,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch.Event,torch.Event,test_Event.py,final,pytest_passed,passed_with_skips,NONE,"当前 NPU 后端不支持 Event.elapsed_time，跳过相关用例。
+/home/l00913161/projects/pta_testcase/test/api_test/test_Event.py:83: 当前 NPU 后端不支持 Event.elapsed_time，跳过相关用例。",NONE,"当前 NPU 后端不支持 Event.elapsed_time，跳过相关用例。
+/home/l00913161/projects/pta_testcase/test/api_test/test_Event.py:83: 当前 NPU 后端不支持 Event.elapsed_time，跳过相关用例。","[""当前 NPU 后端不支持 Event.elapsed_time，跳过相关用例。\n/home/l00913161/projects/pta_testcase/test/api_test/test_Event.py:83: 当前 NPU 后端不支持 Event.elapsed_time，跳过相关用例。"", ""当前 NPU 后端不支持 Event.elapsed_time，跳过相关用例。\n/home/l00913161/projects/pta_testcase/test/api_test/test_Event.py:83: 当前 NPU 后端不支持 Event.elapsed_time，跳过相关用例。"", ""当前 NPU 后端不支持 Event.elapsed_time，跳过相关用例。\n/home/l00913161/projects/pta_testcase/test/api_test/test_Event.py:83: 当前 NPU 后端不支持 Event.elapsed_time，跳过相关用例。"", ""当前 NPU 后端不支持 Event.elapsed_time，跳过相关用例。\n/home/l00913161/projects/pta_testcase/test/api_test/test_Event.py:83: 当前 NPU 后端不支持 Event.elapsed_time，跳过相关用例。""]",9,5,4,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch.library.impl,torch.library.impl,test_library_impl.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],42,42,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch.library.Library,torch.library.Library,test_library_Library.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],7,7,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch.nn.Module.buffers,torch.nn.Module.buffers,test_nn_Module_buffers.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],7,7,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch.nn.Module.modules,torch.nn.Module.modules,test_nn_Module_modules.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],7,7,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch.nn.Module.named_modules,torch.nn.Module.named_modules,test_nn_Module_named_modules.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],8,8,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch.nn.Module.named_parameters,torch.nn.Module.named_parameters,test_nn_Module_named_parameters.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],12,12,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch.nn.Module.register_forward_hook,torch.nn.Module.register_forward_hook,test_nn_Module_register_forward_hook.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],12,12,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch.nn.Module.register_forward_pre_hook,torch.nn.Module.register_forward_pre_hook,test_nn_Module_register_forward_pre_hook.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],5,5,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch.nn.Module.register_load_state_dict_post_hook,torch.nn.Module.register_load_state_dict_post_hook,test_nn_Module_register_load_state_dict_post_hook.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],8,8,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch.utils._pytree.tree_flatten,torch.utils._pytree.tree_flatten,test_utils__pytree_tree_flatten.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],16,16,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch.utils._pytree.tree_map,torch.utils._pytree.tree_map,test_utils__pytree_tree_map.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],11,11,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch.utils._pytree.tree_unflatten,torch.utils._pytree.tree_unflatten,test_utils__pytree_tree_unflatten.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],16,16,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch.utils.swap_tensors,torch.utils.swap_tensors,test_utils_swap_tensors.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],13,13,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch.nn.Parameter.grad,torch.nn.Parameter.grad,test_nn_Parameter_grad.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],9,9,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch.nn.Parameter.device,torch.nn.Parameter.device,test_nn_Parameter_device.py,final,fixed,passed,NONE,未捕获到明确的失败详情。,TEST_BUG,"Test asserts param.to(npu_device) returns nn.Parameter, but PyTorch Parameter.to() returns a plain Tensor (with grad_fn) when moving to a different device. The isinstance check is an incorrect assumption about .to() semantics.",[],38,38,0,0,0,0,adjust_test,True,True,test/api_test,"# 🤖 Copilot CLI Session
+
+> [!NOTE]
+> - **Session ID:** `c26cde92-b368-4ba0-9587-a5c9c5c3d0a9`  
+> - **Started:** 3/23/2026, 11:43:07 PM  
+> - **Duration:** 1m 36s  
+> - **Exported:** 3/23/2026, 11:44:44 PM  
+
+---
+
+<sub>⏱️ 32s</sub>
+
+### 👤 User
+
+使用 single-api-fix skill。
+
+处理修复请求文件：runs/20260323T150914Z/fixes/test_nn_Parameter_device.request.json
+
+执行修复阶段，不要等待额外确认。
+要求：
+1. 只修复该请求对应的单个 API。
+2. 严格遵守请求文件中的 allowed_scopes。
+3. 禁止使用 pytest.xfail。
+4. 不要运行 pytest；外层 pipeline 会自动回归验证。
+5. 最终回复写简洁修复摘要。
+
+
+---
+
+<sub>⏱️ 37s</sub>
+
+### ✅ `skill`
+
+**single-api-fix**
+
+<details>
+<summary>Arguments</summary>
+
+```json
+{
+  ""skill"": ""single-api-fix""
+}
+```
+
+</details>
+
+```
+Skill ""single-api-fix"" loaded successfully. Follow the instructions in the skill context.
+```
+
+
+---
+
+<sub>⏱️ 42s</sub>
+
+### ✅ `bash`
+
+**Read the fix request JSON**
+
+$ cat runs/20260323T150914Z/fixes/test_nn_Parameter_device.request.json
+
+<details>
+<summary>17 lines</summary>
+
+```
+{
+  ""canonical_name"": ""torch.nn.Parameter.device"",
+  ""file_name"": ""test_nn_Parameter_device.py"",
+  ""fix_mode"": ""tests"",
+  ""failure_category"": ""TEST_BUG"",
+  ""fix_recommendation"": ""adjust_test"",
+  ""final_status"": ""pytest_failed"",
+  ""pytest_outcome"": ""failed"",
+  ""allowed_scopes"": [
+    ""test/api_test/test_nn_Parameter_device.py""
+  ],
+  ""root_cause_summary"": ""Test asserts param.to(npu_device) returns nn.Parameter, but PyTorch Parameter.to() returns a plain Tensor (with grad_fn) when moving to a different device. The isinstance check is an incorrect assumption about .to() semantics."",
+  ""failure_messages"": [
+    ""AssertionError: assert False\n +  where False = isinstance(tensor([[1., 1., 1.],\\n        [1., 1., 1.]], device='npu:0', grad_fn=<ToCopyBackward0>), <class 'torch.nn.parameter.Parameter'>)\n +    where <class 'torch.nn.parameter.Parameter'> = nn.Parameter\nnpu_device = device(type='npu', index=0)\n\n    def test_parameter_device_after_to_npu_keeps_npu_device(npu_device):\n        \""\""\""验证对象经 .to('npu') 后，迁移结果仍为 Parameter，且 device 信息正确。\""\""\""\n        param = nn.Parameter(torch.ones((2, 3)))\n        moved = param.to(npu_device)\n    \n>       assert isinstance(moved, nn.Parameter)\nE       AssertionError: assert False\nE        +  where False = isinstance(tensor([[1., 1., 1.],\\n        [1., 1., 1.]], device='npu:0', grad_fn=<ToCopyBackward0>), <class 'torch.nn.parameter.Parameter'>)\nE        +    where <class 'torch.nn.parameter.Parameter'> = nn.Parameter\n\ntest/api_test/test_nn_Parameter_device.py:99: AssertionError""
+  ]
+}
+<exited with exit code 0>
+```
+
+</details>
+
+
+---
+
+<sub>⏱️ 48s</sub>
+
+### ✅ `view`
+
+**view the file at /home/l00913161/projects/pta_testcase/test/api_test/test_nn_Parameter_device.py.**
+
+/home/l00913161/projects/pta_testcase/test/api_test/test_nn_Parameter_device.py
+
+<details>
+<summary>127 lines</summary>
+
+```
+1. """"""
+2. 测试目的：
+3. 1. 验证 torch.nn.Parameter.device 作为 Tensor 继承属性，在 NPU 环境中可正常返回 torch.device 对象。
+4. 2. 覆盖默认 CPU 参数、显式传入 requires_grad、通过 .to(""npu"") / module.to(""npu"") 迁移后的参数、不同 dtype、只读属性异常等关键场景。
+5. 3. 验证返回设备的 type / index 属性以及 torch.device 类型判断在 NPU 上符合预期。
+6. 4. 该 API 本身为属性访问，无显式入参，因此主要覆盖参数对象状态与异常访问路径。
+7. 
+8. API 名称：torch.nn.Parameter.device
+9. 
+10. 覆盖的参数维度表：
+11. | 维度 | 覆盖情况 | 说明 |
+12. | --- | --- | --- |
+13. | 属性访问（无显式入参） | 已覆盖 | 直接读取 `.device`，无需传参 |
+14. | 默认设备（CPU） | 已覆盖 | Parameter 默认创建在 CPU，device.type 为 cpu |
+15. | 显式 requires_grad | 已覆盖 | 默认不传与显式传入 False 两种情况均覆盖 |
+16. | 迁移到 NPU | 已覆盖 | `Parameter.to(...)` 迁移后对象的 device 以及 `module.to(""npu"")` 场景均覆盖 |
+17. | device.type | 已覆盖 | 验证 CPU / NPU 的 type 取值 |
+18. | device.index | 已覆盖 | 验证 NPU 场景下 index 与当前设备一致 |
+19. | 返回值类型 | 已覆盖 | 验证返回值为 `torch.device` 实例 |
+20. | 不同 dtype | 已覆盖 | 覆盖 float16 / float32 / int32 |
+21. | nn.Module 内 Parameter | 已覆盖 | 验证 module.to(""npu"") 后内部参数设备属性 |
+22. | 只读属性异常 | 已覆盖 | 对 `device` 赋值时使用 pytest.raises 验证异常 |
+23. 
+24. 未覆盖项及原因：
+25. | 未覆盖项 | 原因 |
+26. | --- | --- |
+27. | 具体数值正确性 | `.device` 只返回设备信息，不涉及数值计算，本测试不做数值比对 |
+28. | 多卡 / 跨卡设备切换 | 当前用例聚焦单卡 NPU 基本行为，不依赖多卡环境 |
+29. | 非当前卡号的 NPU 场景 | 当前用例聚焦当前可用 NPU 设备的基础行为，不额外切换到其他卡 |
+30. | 其他异常写法（如对内部属性强行篡改） | 该属性为只读，已用赋值异常覆盖主要异常路径，未逐一枚举所有非法访问方式 |
+31. """"""
+32. 
+33. import pytest
+34. 
+35. import torch
+36. import torch.nn as nn
+37. import torch_npu  # noqa: F401
+38. 
+39. 
+40. def _require_npu():
+41.     if not hasattr(torch, ""npu""):
+42.         pytest.skip(""当前环境未暴露 torch.npu，无法在 NPU 上执行 Parameter.device 测试。"")
+43.     if not torch.npu.is_available():
+44.         pytest.skip(""当前环境 NPU 不可用，无法在 NPU 上执行 Parameter.device 测试。"")
+45. 
+46. 
+47. @pytest.fixture(scope=""module"")
+48. def npu_device():
+49.     _require_npu()
+50.     current_index = torch.npu.current_device()
+51.     device = torch.device(f""npu:{current_index}"")
+52.     probe = torch.tensor([1], device=device)
+53.     assert probe.device.type == ""npu""
+54.     assert probe.device.index == current_index
+55.     return device
+56. 
+57. 
+58. def _make_parameter(device, dtype=torch.float32):
+59.     if dtype in (torch.int32, torch.int64, torch.int16, torch.int8, torch.uint8, torch.bool):
+60.         return nn.Parameter(torch.ones((2, 3), device=device, dtype=dtype), requires_grad=False)
+61.     return nn.Parameter(torch.ones((2, 3), device=device, dtype=dtype))
+62. 
+63. 
+64. def test_parameter_device_default_cpu_is_torch_device(npu_device):
+65.     """"""验证默认创建的 Parameter 位于 CPU，且 device 返回 torch.device 对象。""""""
+66.     param = nn.Parameter(torch.ones((2, 3)))
+67. 
+68.     assert isinstance(param.device, torch.device)
+69.     assert param.device.type == ""cpu""
+70.     assert param.device.index is None
+71. 
+72. 
+73. @pytest.mark.parametrize(
+74.     ""dtype, requires_grad"",
+75.     [
+76.         (torch.float16, True),
+77.         (torch.float32, True),
+78.         (torch.int32, False),
+79.     ],
+80. )
+81. def test_parameter_device_on_npu_for_various_dtypes(npu_device, dtype, requires_grad):
+82.     """"""验证不同 dtype 的 Parameter 在 NPU 上读取 device 时均返回正确的设备对象。""""""
+83.     param = nn.Parameter(
+84.         torch.ones((2, 3), device=npu_device, dtype=dtype),
+85.         requires_grad=requires_grad,
+86.     )
+87. 
+88.     assert isinstance(param.device, torch.device)
+89.     assert param.device.type == ""npu""
+90.     assert param.device.index == npu_device.index
+91.     assert param.device == npu_device
+92. 
+93. 
+94. def test_parameter_device_after_to_npu_keeps_npu_device(npu_device):
+95.     """"""验证对象经 .to('npu') 后，迁移结果仍为 Parameter，且 device 信息正确。""""""
+96.     param = nn.Parameter(torch.ones((2, 3)))
+97.     moved = param.to(npu_device)
+98. 
+99.     assert isinstance(moved, nn.Parameter)
+100.     assert isinstance(moved.device, torch.device)
+101.     assert moved.device.type == ""npu""
+102.     assert moved.device.index == npu_device.index
+103. 
+104. 
+105. def test_parameter_device_inside_module_after_module_to_npu(npu_device):
+106.     """"""验证 nn.Module.to('npu') 后，模块内部 Parameter 的 device 为 NPU。""""""
+107.     module = nn.Linear(4, 2)
+108.     module = module.to(npu_device)
+109. 
+110.     weight = module.weight
+111.     bias = module.bias
+112. 
+113.     assert isinstance(weight.device, torch.device)
+114.     assert isinstance(bias.device, torch.device)
+115.     assert weight.device.type == ""npu""
+116.     assert bias.device.type == ""npu""
+117.     assert weight.device.index == npu_device.index
+118.     assert bias.device.index == npu_device.index
+119. 
+120. 
+121. def test_parameter_device_read_only_assignment_raises(npu_device):
+122.     """"""验证 device 为只读属性，对其赋值时会抛出异常。""""""
+123.     param = _make_parameter(npu_device, dtype=torch.float32)
+124. 
+125.     with pytest.raises(AttributeError):
+126.         param.device = npu_device
+127.
+```
+
+</details>
+
+
+---
+
+<sub>⏱️ 1m 4s</sub>
+
+### 💬 Copilot
+
+Now I'll launch the `api_test_fixer` agent since `fix_mode` is ""tests"" and `allowed_scopes` only includes the test file.
+
+---
+
+<sub>⏱️ 1m 4s</sub>
+
+### 📦 task (Completed)
+
+### ✅ `view`
+
+**view the file at /home/l00913161/projects/pta_testcase/test/api_test/test_nn_Parameter_device.py.**
+
+/home/l00913161/projects/pta_testcase/test/api_test/test_nn_Parameter_device.py (lines 1-160)
+
+<details>
+<summary>127 lines</summary>
+
+```
+1. """"""
+2. 测试目的：
+3. 1. 验证 torch.nn.Parameter.device 作为 Tensor 继承属性，在 NPU 环境中可正常返回 torch.device 对象。
+4. 2. 覆盖默认 CPU 参数、显式传入 requires_grad、通过 .to(""npu"") / module.to(""npu"") 迁移后的参数、不同 dtype、只读属性异常等关键场景。
+5. 3. 验证返回设备的 type / index 属性以及 torch.device 类型判断在 NPU 上符合预期。
+6. 4. 该 API 本身为属性访问，无显式入参，因此主要覆盖参数对象状态与异常访问路径。
+7. 
+8. API 名称：torch.nn.Parameter.device
+9. 
+10. 覆盖的参数维度表：
+11. | 维度 | 覆盖情况 | 说明 |
+12. | --- | --- | --- |
+13. | 属性访问（无显式入参） | 已覆盖 | 直接读取 `.device`，无需传参 |
+14. | 默认设备（CPU） | 已覆盖 | Parameter 默认创建在 CPU，device.type 为 cpu |
+15. | 显式 requires_grad | 已覆盖 | 默认不传与显式传入 False 两种情况均覆盖 |
+16. | 迁移到 NPU | 已覆盖 | `Parameter.to(...)` 迁移后对象的 device 以及 `module.to(""npu"")` 场景均覆盖 |
+17. | device.type | 已覆盖 | 验证 CPU / NPU 的 type 取值 |
+18. | device.index | 已覆盖 | 验证 NPU 场景下 index 与当前设备一致 |
+19. | 返回值类型 | 已覆盖 | 验证返回值为 `torch.device` 实例 |
+20. | 不同 dtype | 已覆盖 | 覆盖 float16 / float32 / int32 |
+21. | nn.Module 内 Parameter | 已覆盖 | 验证 module.to(""npu"") 后内部参数设备属性 |
+22. | 只读属性异常 | 已覆盖 | 对 `device` 赋值时使用 pytest.raises 验证异常 |
+23. 
+24. 未覆盖项及原因：
+25. | 未覆盖项 | 原因 |
+26. | --- | --- |
+27. | 具体数值正确性 | `.device` 只返回设备信息，不涉及数值计算，本测试不做数值比对 |
+28. | 多卡 / 跨卡设备切换 | 当前用例聚焦单卡 NPU 基本行为，不依赖多卡环境 |
+29. | 非当前卡号的 NPU 场景 | 当前用例聚焦当前可用 NPU 设备的基础行为，不额外切换到其他卡 |
+30. | 其他异常写法（如对内部属性强行篡改） | 该属性为只读，已用赋值异常覆盖主要异常路径，未逐一枚举所有非法访问方式 |
+31. """"""
+32. 
+33. import pytest
+34. 
+35. import torch
+36. import torch.nn as nn
+37. import torch_npu  # noqa: F401
+38. 
+39. 
+40. def _require_npu():
+41.     if not hasattr(torch, ""npu""):
+42.         pytest.skip(""当前环境未暴露 torch.npu，无法在 NPU 上执行 Parameter.device 测试。"")
+43.     if not torch.npu.is_available():
+44.         pytest.skip(""当前环境 NPU 不可用，无法在 NPU 上执行 Parameter.device 测试。"")
+45. 
+46. 
+47. @pytest.fixture(scope=""module"")
+48. def npu_device():
+49.     _require_npu()
+50.     current_index = torch.npu.current_device()
+51.     device = torch.device(f""npu:{current_index}"")
+52.     probe = torch.tensor([1], device=device)
+53.     assert probe.device.type == ""npu""
+54.     assert probe.device.index == current_index
+55.     return device
+56. 
+57. 
+58. def _make_parameter(device, dtype=torch.float32):
+59.     if dtype in (torch.int32, torch.int64, torch.int16, torch.int8, torch.uint8, torch.bool):
+60.         return nn.Parameter(torch.ones((2, 3), device=device, dtype=dtype), requires_grad=False)
+61.     return nn.Parameter(torch.ones((2, 3), device=device, dtype=dtype))
+62. 
+63. 
+64. def test_parameter_device_default_cpu_is_torch_device(npu_device):
+65.     """"""验证默认创建的 Parameter 位于 CPU，且 device 返回 torch.device 对象。""""""
+66.     param = nn.Parameter(torch.ones((2, 3)))
+67. 
+68.     assert isinstance(param.device, torch.device)
+69.     assert param.device.type == ""cpu""
+70.     assert param.device.index is None
+71. 
+72. 
+73. @pytest.mark.parametrize(
+74.     ""dtype, requires_grad"",
+75.     [
+76.         (torch.float16, True),
+77.         (torch.float32, True),
+78.         (torch.int32, False),
+79.     ],
+80. )
+81. def test_parameter_device_on_npu_for_various_dtypes(npu_device, dtype, requires_grad):
+82.     """"""验证不同 dtype 的 Parameter 在 NPU 上读取 device 时均返回正确的设备对象。""""""
+83.     param = nn.Parameter(
+84.         torch.ones((2, 3), device=npu_device, dtype=dtype),
+85.         requires_grad=requires_grad,
+86.     )
+87. 
+88.     assert isinstance(param.device, torch.device)
+89.     assert param.device.type == ""npu""
+90.     assert param.device.index == npu_device.index
+91.     assert param.device == npu_device
+92. 
+93. 
+94. def test_parameter_device_after_to_npu_keeps_npu_device(npu_device):
+95.     """"""验证对象经 .to('npu') 后，迁移结果仍为 Parameter，且 device 信息正确。""""""
+96.     param = nn.Parameter(torch.ones((2, 3)))
+97.     moved = param.to(npu_device)
+98. 
+99.     assert isinstance(moved, nn.Parameter)
+100.     assert isinstance(moved.device, torch.device)
+101.     assert moved.device.type == ""npu""
+102.     assert moved.device.index == npu_device.index
+103. 
+104. 
+105. def test_parameter_device_inside_module_after_module_to_npu(npu_device):
+106.     """"""验证 nn.Module.to('npu') 后，模块内部 Parameter 的 device 为 NPU。""""""
+107.     module = nn.Linear(4, 2)
+108.     module = module.to(npu_device)
+109. 
+110.     weight = module.weight
+111.     bias = module.bias
+112. 
+113.     assert isinstance(weight.device, torch.device)
+114.     assert isinstance(bias.device, torch.device)
+115.     assert weight.device.type == ""npu""
+116.     assert bias.device.type == ""npu""
+117.     assert weight.device.index == npu_device.index
+118.     assert bias.device.index == npu_device.index
+119. 
+120. 
+121. def test_parameter_device_read_only_assignment_raises(npu_device):
+122.     """"""验证 device 为只读属性，对其赋值时会抛出异常。""""""
+123.     param = _make_parameter(npu_device, dtype=torch.float32)
+124. 
+125.     with pytest.raises(AttributeError):
+126.         param.device = npu_device
+127.
+```
+
+</details>
+
+
+### ✅ `apply_patch`
+
+<details>
+<summary>Arguments</summary>
+
+```json
+""*** Begin Patch\n*** Update File: /home/l00913161/projects/pta_testcase/test/api_test/test_nn_Parameter_device.py\n@@\n def test_parameter_device_after_to_npu_keeps_npu_device(npu_device):\n-    \""\""\""验证对象经 .to('npu') 后，迁移结果仍为 Parameter，且 device 信息正确。\""\""\""\n+    \""\""\""验证对象经 .to('npu') 后返回 Tensor，且其 device 信息正确。\""\""\""\n     param = nn.Parameter(torch.ones((2, 3)))\n     moved = param.to(npu_device)\n \n-    assert isinstance(moved, nn.Parameter)\n     assert isinstance(moved.device, torch.device)\n     assert moved.device.type == \""npu\""\n     assert moved.device.index == npu_device.index\n*** End Patch\n""
+```
+
+</details>
+
+```
+Modified 1 file(s): /home/l00913161/projects/pta_testcase/test/api_test/test_nn_Parameter_device.py
+```
+
+
+### 💬 Copilot
+
+修改摘要
+- 修复了 `test_parameter_device_after_to_npu_keeps_npu_device` 中对 `Parameter.to()` 返回类型的错误断言。
+- 更新该测试的 docstring，明确说明 `.to('npu')` 后返回的是 `Tensor`，重点验证其 `device` 信息正确。
+
+变更文件
+- `test/api_test/test_nn_Parameter_device.py`
+
+剩余风险或未解决项
+- 未运行 pytest；但本次修改仅删除了与 PyTorch 标准语义不符的 `isinstance(moved, nn.Parameter)` 断言，并同步更新说明，改动范围最小。
+
+
+---
+
+<sub>⏱️ 1m 30s</sub>
+
+### 💬 Copilot
+
+Let me verify the change was applied correctly:
+
+---
+
+<sub>⏱️ 1m 30s</sub>
+
+### ✅ `view`
+
+**view the file at /home/l00913161/projects/pta_testcase/test/api_test/test_nn_Parameter_device.py.**
+
+/home/l00913161/projects/pta_testcase/test/api_test/test_nn_Parameter_device.py (lines 94-103)
+
+<details>
+<summary>10 lines</summary>
+
+```
+94. def test_parameter_device_after_to_npu_keeps_npu_device(npu_device):
+95.     """"""验证对象经 .to('npu') 后返回 Tensor，且其 device 信息正确。""""""
+96.     param = nn.Parameter(torch.ones((2, 3)))
+97.     moved = param.to(npu_device)
+98. 
+99.     assert isinstance(moved.device, torch.device)
+100.     assert moved.device.type == ""npu""
+101.     assert moved.device.index == npu_device.index
+102. 
+103.
+```
+
+</details>
+
+
+---
+
+<sub>⏱️ 1m 36s</sub>
+
+### 💬 Copilot
+
+**修复摘要**
+
+| 项目 | 内容 |
+|---|---|
+| **API** | `torch.nn.Parameter.device` |
+| **根因** | `Parameter.to()` 按 PyTorch 语义返回普通 `Tensor`，测试误断言返回值仍为 `nn.Parameter` |
+| **修改** | 删除 `assert isinstance(moved, nn.Parameter)`，更新 docstring |
+| **文件** | `test/api_test/test_nn_Parameter_device.py` (line 94-102) |
+| **风险** | 极低，仅移除一条不符合框架语义的断言 |
+
+---
+
+<sub>Generated by [GitHub Copilot CLI](https://github.com/features/copilot/cli)</sub>",runs/20260323T150914Z/fixes/test_nn_Parameter_device.md,"[""test/api_test/test_nn_Parameter_device.py""]",pytest_passed,runs/20260323T150914Z/summary.md,none,
+torch.nn.Parameter.device.type,torch.nn.Parameter.device.type,test_nn_Parameter_device_type.py,final,analyzed,no_tests_recorded,UNKNOWN,未捕获到明确的失败详情。,UNKNOWN,未捕获到明确的失败详情。,[],0,0,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,human_required,unknown_failure
+torch.nn.Parameter.is_contiguous,torch.nn.Parameter.is_contiguous,test_nn_Parameter_is_contiguous.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],6,6,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch.nn.Parameter.ndim,torch.nn.Parameter.ndim,test_nn_Parameter_ndim.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],7,7,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch.nn.Parameter.size,torch.nn.Parameter.size,test_nn_Parameter_size.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],27,27,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch.nn.Parameter.stride,torch.nn.Parameter.stride,test_nn_Parameter_stride.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],16,16,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch.nn.Parameter.dtype,torch.nn.Parameter.dtype,test_nn_Parameter_dtype.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],11,11,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch.nn.Parameter.itemsize,torch.nn.Parameter.itemsize,test_nn_Parameter_itemsize.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],12,12,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch.autograd._unsafe_preserve_version_counter,torch.autograd._unsafe_preserve_version_counter,test_autograd__unsafe_preserve_version_counter.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],13,13,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch.library,torch.library,test_library.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],5,5,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch._dynamo.compiled_autograd.compiled_autograd_enabled,torch._dynamo.compiled_autograd.compiled_autograd_enabled,test__dynamo_compiled_autograd_compiled_autograd_enabled.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],5,5,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch._dynamo.compiled_autograd.compiled_autograd_enabled_force_eager,torch._dynamo.compiled_autograd.compiled_autograd_enabled_force_eager,test__dynamo_compiled_autograd_compiled_autograd_enabled_force_eager.py,final,analyzed,no_tests_recorded,UNKNOWN,未捕获到明确的失败详情。,UNKNOWN,未捕获到明确的失败详情。,[],0,0,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,human_required,unknown_failure
+torch._dynamo.compiled_autograd.in_compiled_autograd_region,torch._dynamo.compiled_autograd.in_compiled_autograd_region,test__dynamo_compiled_autograd_in_compiled_autograd_region.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],2,2,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch._running_with_deploy,torch._running_with_deploy,test__running_with_deploy.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],10,10,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch.utils._python_dispatch.is_traceable_wrapper_subclass,torch.utils._python_dispatch.is_traceable_wrapper_subclass,test_utils__python_dispatch_is_traceable_wrapper_subclass.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],17,17,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch._dynamo.comptime.comptime.print,torch._dynamo.comptime.comptime.print,test__dynamo_comptime_comptime_print.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],11,11,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch._dynamo.config,torch._dynamo.config,test__dynamo_config.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],8,8,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch._dynamo.config.skip_fsdp_hooks,torch._dynamo.config.skip_fsdp_hooks,test__dynamo_config_skip_fsdp_hooks.py,final,analyzed,no_tests_recorded,UNKNOWN,未捕获到明确的失败详情。,UNKNOWN,未捕获到明确的失败详情。,[],0,0,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,human_required,unknown_failure
+torch._C.DispatchKey.Functionalize,torch._C.DispatchKey.Functionalize,test__C_DispatchKey_Functionalize.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],22,22,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch._C.DispatchKeySet,torch._C.DispatchKeySet,test__C_DispatchKeySet.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],21,21,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch._C._ExcludeDispatchKeyGuard,torch._C._ExcludeDispatchKeyGuard,test__C__ExcludeDispatchKeyGuard.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],16,16,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch._from_functional_tensor,torch._from_functional_tensor,test__from_functional_tensor.py,final,fixed,passed,NONE,未捕获到明确的失败详情。,TEST_BUG,"Test asserts _to_functional_tensor preserves requires_grad, but PyTorch functionalization intentionally does not propagate requires_grad to the functional wrapper. The assertion is incorrect for this internal API.",[],17,17,0,0,0,0,adjust_test,True,True,test/api_test,"# 🤖 Copilot CLI Session
+
+> [!NOTE]
+> - **Session ID:** `45d67dc8-6279-4a97-9faf-c187f558597b`  
+> - **Started:** 3/23/2026, 11:46:26 PM  
+> - **Duration:** 1m 54s  
+> - **Exported:** 3/23/2026, 11:48:21 PM  
+
+---
+
+<sub>⏱️ 27s</sub>
+
+### 👤 User
+
+使用 single-api-fix skill。
+
+处理修复请求文件：runs/20260323T150914Z/fixes/test__from_functional_tensor.request.json
+
+执行修复阶段，不要等待额外确认。
+要求：
+1. 只修复该请求对应的单个 API。
+2. 严格遵守请求文件中的 allowed_scopes。
+3. 禁止使用 pytest.xfail。
+4. 不要运行 pytest；外层 pipeline 会自动回归验证。
+5. 最终回复写简洁修复摘要。
+
+
+---
+
+<sub>⏱️ 33s</sub>
+
+### ✅ `skill`
+
+**single-api-fix**
+
+<details>
+<summary>Arguments</summary>
+
+```json
+{
+  ""skill"": ""single-api-fix""
+}
+```
+
+</details>
+
+```
+Skill ""single-api-fix"" loaded successfully. Follow the instructions in the skill context.
+```
+
+
+---
+
+<sub>⏱️ 38s</sub>
+
+### ✅ `bash`
+
+**Read fix request JSON**
+
+$ cat runs/20260323T150914Z/fixes/test__from_functional_tensor.request.json
+
+<details>
+<summary>19 lines</summary>
+
+```
+{
+  ""canonical_name"": ""torch._from_functional_tensor"",
+  ""file_name"": ""test__from_functional_tensor.py"",
+  ""fix_mode"": ""tests"",
+  ""failure_category"": ""TEST_BUG"",
+  ""fix_recommendation"": ""adjust_test"",
+  ""final_status"": ""pytest_failed"",
+  ""pytest_outcome"": ""failed"",
+  ""allowed_scopes"": [
+    ""test/api_test/test__from_functional_tensor.py""
+  ],
+  ""root_cause_summary"": ""Test asserts _to_functional_tensor preserves requires_grad, but PyTorch functionalization intentionally does not propagate requires_grad to the functional wrapper. The assertion is incorrect for this internal API."",
+  ""failure_messages"": [
+    ""AssertionError: assert False == True\n +  where False = _to_functional_tensor(tensor(1., device='npu:0', dtype=torch.float16, requires_grad=True),\\n       device='npu:0').requires_grad\n +  and   True = tensor(1., device='npu:0', dtype=torch.float16, requires_grad=True).requires_grad\nnpu_device = device(type='npu', index=0), shape = (), dtype = torch.float16\nrequires_grad = True\n\n    @pytest.mark.parametrize(\n        \""shape,dtype,requires_grad\"",\n        [\n            ((), None, False),\n            ((), torch.float16, False),\n            ((), torch.float16, True),\n            ((1,), torch.float32, False),\n            ((1,), torch.float32, True),\n            ((2, 3), torch.float64, False),\n            ((2, 3), torch.float64, True),\n            ((2, 3), torch.int32, False),\n            ((1,), torch.int64, False),\n            ((), torch.bool, False),\n        ],\n    )\n    def test_from_functional_tensor_round_trip_preserves_tensor_properties(npu_device, shape, dtype, requires_grad):\n        \""\""\""验证 functional tensor round-trip 后的类型、设备、形状、dtype 和 requires_grad 保持一致。\""\""\""\n        base_tensor = _make_npu_tensor(shape, dtype=dtype).requires_grad_(requires_grad)\n        functional_tensor = _to_functional_npu_tensor(base_tensor)\n    \n        assert isinstance(functional_tensor, torch.Tensor)\n        assert functional_tensor.device.type == \""npu\""\n        assert functional_tensor.device.index == 0\n        assert functional_tensor.shape == base_tensor.shape\n        assert functional_tensor.dtype == base_tensor.dtype\n>       assert functional_tensor.requires_grad == base_tensor.requires_grad\nE       AssertionError: assert False == True\nE        +  where False = _to_functional_tensor(tensor(1., device='npu:0', dtype=torch.float16, requires_grad=True),\\n       device='npu:0').requires_grad\nE        +  and   True = tensor(1., device='npu:0', dtype=torch.float16, requires_grad=True).requires_grad\n\ntest/api_test/test__from_functional_tensor.py:93: AssertionError"",
+    ""AssertionError: assert False == True\n +  where False = _to_functional_tensor(tensor([1.], device='npu:0', requires_grad=True),\\n       device='npu:0').requires_grad\n +  and   True = tensor([1.], device='npu:0', requires_grad=True).requires_grad\nnpu_device = device(type='npu', index=0), shape = (1,), dtype = torch.float32\nrequires_grad = True\n\n    @pytest.mark.parametrize(\n        \""shape,dtype,requires_grad\"",\n        [\n            ((), None, False),\n            ((), torch.float16, False),\n            ((), torch.float16, True),\n            ((1,), torch.float32, False),\n            ((1,), torch.float32, True),\n            ((2, 3), torch.float64, False),\n            ((2, 3), torch.float64, True),\n            ((2, 3), torch.int32, False),\n            ((1,), torch.int64, False),\n            ((), torch.bool, False),\n        ],\n    )\n    def test_from_functional_tensor_round_trip_preserves_tensor_properties(npu_device, shape, dtype, requires_grad):\n        \""\""\""验证 functional tensor round-trip 后的类型、设备、形状、dtype 和 requires_grad 保持一致。\""\""\""\n        base_tensor = _make_npu_tensor(shape, dtype=dtype).requires_grad_(requires_grad)\n        functional_tensor = _to_functional_npu_tensor(base_tensor)\n    \n        assert isinstance(functional_tensor, torch.Tensor)\n        assert functional_tensor.device.type == \""npu\""\n        assert functional_tensor.device.index == 0\n        assert functional_tensor.shape == base_tensor.shape\n        assert functional_tensor.dtype == base_tensor.dtype\n>       assert functional_tensor.requires_grad == base_tensor.requires_grad\nE       AssertionError: assert False == True\nE        +  where False = _to_functional_tensor(tensor([1.], device='npu:0', requires_grad=True),\\n       device='npu:0').requires_grad\nE        +  and   True = tensor([1.], device='npu:0', requires_grad=True).requires_grad\n\ntest/api_test/test__from_functional_tensor.py:93: AssertionError"",
+    ""AssertionError: assert False == True\n +  where False = _to_functional_tensor(tensor([[1., 1., 1.],\\n        [1., 1., 1.]], device='npu:0', dtype=torch.float64, requires_grad=True),\\n       device='npu:0').requires_grad\n +  and   True = tensor([[1., 1., 1.],\\n        [1., 1., 1.]], device='npu:0', dtype=torch.float64, requires_grad=True).requires_grad\nnpu_device = device(type='npu', index=0), shape = (2, 3), dtype = torch.float64\nrequires_grad = True\n\n    @pytest.mark.parametrize(\n        \""shape,dtype,requires_grad\"",\n        [\n            ((), None, False),\n            ((), torch.float16, False),\n            ((), torch.float16, True),\n            ((1,), torch.float32, False),\n            ((1,), torch.float32, True),\n            ((2, 3), torch.float64, False),\n            ((2, 3), torch.float64, True),\n            ((2, 3), torch.int32, False),\n            ((1,), torch.int64, False),\n            ((), torch.bool, False),\n        ],\n    )\n    def test_from_functional_tensor_round_trip_preserves_tensor_properties(npu_device, shape, dtype, requires_grad):\n        \""\""\""验证 functional tensor round-trip 后的类型、设备、形状、dtype 和 requires_grad 保持一致。\""\""\""\n        base_tensor = _make_npu_tensor(shape, dtype=dtype).requires_grad_(requires_grad)\n        functional_tensor = _to_functional_npu_tensor(base_tensor)\n    \n        assert isinstance(functional_tensor, torch.Tensor)\n        assert functional_tensor.device.type == \""npu\""\n        assert functional_tensor.device.index == 0\n        assert functional_tensor.shape == base_tensor.shape\n        assert functional_tensor.dtype == base_tensor.dtype\n>       assert functional_tensor.requires_grad == base_tensor.requires_grad\nE       AssertionError: assert False == True\nE        +  where False = _to_functional_tensor(tensor([[1., 1., 1.],\\n        [1., 1., 1.]], device='npu:0', dtype=torch.float64, requires_grad=True),\\n       device='npu:0').requires_grad\nE        +  and   True = tensor([[1., 1., 1.],\\n        [1., 1., 1.]], device='npu:0', dtype=torch.float64, requires_grad=True).requires_grad\n\ntest/api_test/test__from_functional_tensor.py:93: AssertionError""
+  ]
+}
+<exited with exit code 0>
+```
+
+</details>
+
+
+---
+
+<sub>⏱️ 47s</sub>
+
+### ✅ `view`
+
+**view the file at /home/l00913161/projects/pta_testcase/test/api_test/test__from_functional_tensor.py.**
+
+/home/l00913161/projects/pta_testcase/test/api_test/test__from_functional_tensor.py
+
+<details>
+<summary>140 lines</summary>
+
+```
+1. """"""
+2. 测试目的：
+3. 1. 验证 torch._from_functional_tensor 在 NPU 环境下可正常使用。
+4. 2. 验证 round-trip（torch._to_functional_tensor -> torch._from_functional_tensor）后，返回 Tensor 且基本属性（device/shape/dtype/requires_grad）保持一致。
+5. 3. 验证非 functional tensor、非 Tensor 入参以及缺参场景下的异常行为。
+6. 4. 验证多个典型 dtype、shape 和 requires_grad 组合的覆盖情况。
+7. 
+8. API 名称：torch._from_functional_tensor
+9. 
+10. 覆盖的参数维度表：
+11. | 维度 | 覆盖情况 | 说明 |
+12. | --- | --- | --- |
+13. | t（functional tensor） | 已覆盖 | 通过 torch._to_functional_tensor 构造后再调用 torch._from_functional_tensor |
+14. | t（普通 NPU Tensor） | 已覆盖 | 传入非 functional tensor，验证异常行为 |
+15. | t（非 Tensor） | 已覆盖 | 传入 None / int / list，验证类型错误 |
+16. | 传参 / 缺参 | 已覆盖 | 正常传参与缺参 TypeError 均覆盖 |
+17. | dtype | 已覆盖 | 默认不传 dtype，以及显式 float16 / float32 / int32 / int64 / bool / float64 |
+18. | shape | 已覆盖 | 标量、1 维、2 维形状覆盖 |
+19. | requires_grad | 已覆盖 | 覆盖 True / False 两种场景 |
+20. | device | 已覆盖 | NPU 设备覆盖 |
+21. 
+22. 未覆盖项及原因：
+23. | 未覆盖项 | 原因 |
+24. | --- | --- |
+25. | 具体数值正确性校验 | 已在正常 round-trip 场景补充验证返回结果与原始 Tensor 数据一致 |
+26. | 多 NPU 卡切换 | 当前用例聚焦单卡 NPU 的基础功能，未依赖多卡环境 |
+27. | CPU / CUDA 路径 | 本测试文件目标是 NPU 功能验证，未覆盖其他设备路径 |
+28. | 复合输入类型 | API 签名仅接受单个 Tensor 参数，不存在复合输入类型场景 |
+29. """"""
+30. 
+31. import pytest
+32. 
+33. import torch
+34. import torch_npu  # noqa: F401
+35. 
+36. 
+37. def _require_npu_functional_apis():
+38.     if not hasattr(torch, ""npu""):
+39.         pytest.skip(""当前环境未暴露 torch.npu，无法在 NPU 上执行 torch._from_functional_tensor 测试。"")
+40.     if not torch.npu.is_available():
+41.         pytest.skip(""当前环境 NPU 不可用，无法在 NPU 上执行 torch._from_functional_tensor 测试。"")
+42.     if not hasattr(torch, ""_sync""):
+43.         pytest.skip(""当前 PyTorch 版本缺少 torch._sync，无法正确同步 functional tensor 状态。"")
+44.     if not hasattr(torch, ""_to_functional_tensor""):
+45.         pytest.skip(""当前 PyTorch 版本缺少 torch._to_functional_tensor，无法构造 functional tensor。"")
+46.     if not hasattr(torch, ""_from_functional_tensor""):
+47.         pytest.skip(""当前 PyTorch 版本缺少 torch._from_functional_tensor，无法验证功能。"")
+48. 
+49. 
+50. def _make_npu_tensor(shape, dtype=None):
+51.     if dtype is None:
+52.         return torch.ones(shape, device=torch.device(""npu:0""))
+53.     return torch.ones(shape, device=torch.device(""npu:0""), dtype=dtype)
+54. 
+55. 
+56. def _to_functional_npu_tensor(tensor):
+57.     functional_tensor = torch._to_functional_tensor(tensor)
+58.     torch._sync(functional_tensor)
+59.     return functional_tensor
+60. 
+61. 
+62. @pytest.fixture(scope=""module"")
+63. def npu_device():
+64.     _require_npu_functional_apis()
+65.     return torch.device(""npu:0"")
+66. 
+67. 
+68. @pytest.mark.parametrize(
+69.     ""shape,dtype,requires_grad"",
+70.     [
+71.         ((), None, False),
+72.         ((), torch.float16, False),
+73.         ((), torch.float16, True),
+74.         ((1,), torch.float32, False),
+75.         ((1,), torch.float32, True),
+76.         ((2, 3), torch.float64, False),
+77.         ((2, 3), torch.float64, True),
+78.         ((2, 3), torch.int32, False),
+79.         ((1,), torch.int64, False),
+80.         ((), torch.bool, False),
+81.     ],
+82. )
+83. def test_from_functional_tensor_round_trip_preserves_tensor_properties(npu_device, shape, dtype, requires_grad):
+84.     """"""验证 functional tensor round-trip 后的类型、设备、形状、dtype 和 requires_grad 保持一致。""""""
+85.     base_tensor = _make_npu_tensor(shape, dtype=dtype).requires_grad_(requires_grad)
+86.     functional_tensor = _to_functional_npu_tensor(base_tensor)
+87. 
+88.     assert isinstance(functional_tensor, torch.Tensor)
+89.     assert functional_tensor.device.type == ""npu""
+90.     assert functional_tensor.device.index == 0
+91.     assert functional_tensor.shape == base_tensor.shape
+92.     assert functional_tensor.dtype == base_tensor.dtype
+93.     assert functional_tensor.requires_grad == base_tensor.requires_grad
+94. 
+95.     out = torch._from_functional_tensor(functional_tensor)
+96. 
+97.     assert isinstance(out, torch.Tensor)
+98.     assert out.device.type == ""npu""
+99.     assert out.device.index == 0
+100.     assert out.shape == base_tensor.shape
+101.     assert out.dtype == base_tensor.dtype
+102.     assert out.requires_grad == base_tensor.requires_grad
+103.     assert torch.equal(out, base_tensor)
+104. 
+105. 
+106. def test_from_functional_tensor_round_trip_works_for_scalar_shape(npu_device):
+107.     """"""验证标量 Tensor 的 round-trip 仍保持 NPU Tensor 属性。""""""
+108.     base_tensor = _make_npu_tensor((), dtype=torch.float32)
+109.     functional_tensor = _to_functional_npu_tensor(base_tensor)
+110. 
+111.     out = torch._from_functional_tensor(functional_tensor)
+112. 
+113.     assert isinstance(out, torch.Tensor)
+114.     assert out.device.type == ""npu""
+115.     assert out.shape == torch.Size([])
+116.     assert out.dtype == torch.float32
+117.     assert out.requires_grad is False
+118.     assert torch.equal(out, base_tensor)
+119. 
+120. 
+121. def test_from_functional_tensor_non_functional_npu_tensor_raises(npu_device):
+122.     """"""验证普通 NPU Tensor 不是 functional tensor 时会抛出异常。""""""
+123.     base_tensor = _make_npu_tensor((2, 3), dtype=torch.float32).requires_grad_(True)
+124. 
+125.     with pytest.raises(RuntimeError):
+126.         torch._from_functional_tensor(base_tensor)
+127. 
+128. 
+129. @pytest.mark.parametrize(""bad_input"", [None, 1, [1, 2, 3], ""abc""])
+130. def test_from_functional_tensor_non_tensor_input_raises_type_error(npu_device, bad_input):
+131.     """"""验证非 Tensor 入参会抛出 TypeError。""""""
+132.     with pytest.raises(TypeError):
+133.         torch._from_functional_tensor(bad_input)
+134. 
+135. 
+136. def test_from_functional_tensor_missing_argument_raises_type_error(npu_device):
+137.     """"""验证缺参时会抛出 TypeError。""""""
+138.     with pytest.raises(TypeError):
+139.         torch._from_functional_tensor()
+140.
+```
+
+</details>
+
+
+---
+
+<sub>⏱️ 1m 13s</sub>
+
+### 💬 Copilot
+
+The `fix_mode` is `""tests""` and `allowed_scopes` only includes the test file, so I'll use `api_test_fixer`. Let me launch it now.
+
+---
+
+<sub>⏱️ 1m 13s</sub>
+
+### ✅ `task`
+
+**Fix _from_functional_tensor test**
+
+<details>
+<summary>Arguments</summary>
+
+````json
+{
+  ""name"": ""fix-from-functional-tensor"",
+  ""agent_type"": ""api_test_fixer"",
+  ""description"": ""Fix _from_functional_tensor test"",
+  ""mode"": ""background"",
+  ""prompt"": ""\n## Fix Request\n\nYou must fix the test file `test/api_test/test__from_functional_tensor.py` for the API `torch._from_functional_tensor`.\n\n### Allowed scope\nYou may ONLY modify this single file:\n- `test/api_test/test__from_functional_tensor.py`\n\n### Root cause\nThe test incorrectly asserts that `_to_functional_tensor` preserves `requires_grad`. However, PyTorch functionalization **intentionally does NOT propagate `requires_grad`** to the functional wrapper tensor. So when the original tensor has `requires_grad=True`, the functional tensor will always have `requires_grad=False`. The assertion on line 93 is wrong.\n\n### Failure details\nThree parametrized test cases fail (all cases where `requires_grad=True`):\n- `((), torch.float16, True)`\n- `((1,), torch.float32, True)`  \n- `((2, 3), torch.float64, True)`\n\nAll fail at line 93:\n```\nassert functional_tensor.requires_grad == base_tensor.requires_grad\n```\nwith `False != True` because `functional_tensor.requires_grad` is always `False`.\n\n### Required fix\nIn the function `test_from_functional_tensor_round_trip_preserves_tensor_properties`:\n\n1. **Line 93**: Remove or replace the incorrect assertion `assert functional_tensor.requires_grad == base_tensor.requires_grad`. The functional tensor is an intermediate wrapper and intentionally does NOT propagate requires_grad. Replace it with:\n   ```python\n   # Functionalization does not propagate requires_grad to the wrapper\n   assert functional_tensor.requires_grad is False\n   ```\n\n2. **Line 102**: Keep the assertion `assert out.requires_grad == base_tensor.requires_grad` as-is. After `_from_functional_tensor`, the original tensor is returned and should preserve `requires_grad`. (This line was never reached due to the earlier failure, but it should be correct.)\n\n3. Update the file header docstring (lines 2-4) to reflect that the round-trip verifies `requires_grad` is preserved on the **output** of `_from_functional_tensor`, not on the intermediate functional tensor wrapper.\n\n### Constraints\n- Do NOT use `pytest.xfail`\n- Do NOT run pytest\n- Only modify `test/api_test/test__from_functional_tensor.py`\n- Make the minimal change needed to fix the incorrect assertion\n""
+}
+````
+
+</details>
+
+```
+Agent started in background with agent_id: fix-from-functional-tensor. You can use read_agent tool with this agent_id to check status and retrieve results. Instruct the user to use /tasks to manage the background agent.
+```
+
+
+---
+
+<sub>⏱️ 1m 35s</sub>
+
+### ✅ `read_agent`
+
+**Api_test_fixer agent (Fix _from_functional_tensor test)**
+
+<details>
+<summary>Arguments</summary>
+
+```json
+{
+  ""agent_id"": ""fix-from-functional-tensor"",
+  ""wait"": true,
+  ""timeout"": 120
+}
+```
+
+</details>
+
+<details>
+<summary>13 lines</summary>
+
+```
+Agent completed. agent_id: fix-from-functional-tensor, agent_type: api_test_fixer, status: completed, description: Fix _from_functional_tensor test, elapsed: 21s, total_turns: 0, duration: 21s
+
+修改摘要
+- 修正 `test_from_functional_tensor_round_trip_preserves_tensor_properties` 中对中间 functional tensor 的错误断言：
+  - 原先错误地要求 `functional_tensor.requires_grad == base_tensor.requires_grad`
+  - 改为断言 `functional_tensor.requires_grad is False`，符合 PyTorch functionalization 的实际行为
+- 更新文件头部说明：
+  - 明确 round-trip 校验的是 `_from_functional_tensor` 输出结果的 `requires_grad` 保持一致
+  - 不再暗示中间 functional wrapper 会保留 `requires_grad`
+
+变更文件
+- `test/api_test/test__from_functional_tensor.py`
+
+剩余风险或未解决项
+- 未运行 pytest；按要求未执行测试
+- 其余断言未调整，尤其保留了 `assert out.requires_grad == base_tensor.requires_grad`，应符合本次修复目标和 API 预期
+```
+
+</details>
+
+
+---
+
+<sub>⏱️ 1m 35s</sub>
+
+### ℹ️ Notification
+
+Background agent ""Fix _from_functional_tensor test"" (api_test_fixer) completed
+
+<details>
+<summary>Detail</summary>
+
+
+## Fix Request
+
+You must fix the test file `test/api_test/test__from_functional_tensor.py` for the API `torch._from_functional_tensor`.
+
+### Allowed scope
+You may ONLY modify this single file:
+- `test/api_test/test__from_functional_tensor.py`
+
+### Root cause
+The test incorrectly asserts that `_to_functional_tensor` preserves `requires_grad`. However, PyTorch functionalization **intentionally does NOT propagate `requires_grad`** to the functional wrapper tensor. So when the original tensor has `requires_grad=True`, the functional tensor will always have `requires_grad=False`. The assertion on line 93 is wrong.
+
+### Failure details
+Three parametrized test cases fail (all cases where `requires_grad=True`):
+- `((), torch.float16, True)`
+- `((1,), torch.float32, True)`  
+- `((2, 3), torch.float64, True)`
+
+All fail at line 93:
+```
+assert functional_tensor.requires_grad == base_tensor.requires_grad
+```
+with `False != True` because `functional_tensor.requires_grad` is always `False`.
+
+### Required fix
+In the function `test_from_functional_tensor_round_trip_preserves_tensor_properties`:
+
+1. **Line 93**: Remove or replace the incorrect assertion `assert functional_tensor.requires_grad == base_tensor.requires_grad`. The functional tensor is an intermediate wrapper and intentionally does NOT propagate requires_grad. Replace it with:
+   ```python
+   # Functionalization does not propagate requires_grad to the wrapper
+   assert functional_tensor.requires_grad is False
+   ```
+
+2. **Line 102**: Keep the assertion `assert out.requires_grad == base_tensor.requires_grad` as-is. After `_from_functional_tensor`, the original tensor is returned and should preserve `requires_grad`. (This line was never reached due to the earlier failure, but it should be correct.)
+
+3. Update the file header docstring (lines 2-4) to reflect that the round-trip verifies `requires_grad` is preserved on the **output** of `_from_functional_tensor`, not on the intermediate functional tensor wrapper.
+
+### Constraints
+- Do NOT use `pytest.xfail`
+- Do NOT run pytest
+- Only modify `test/api_test/test__from_functional_tensor.py`
+- Make the minimal change needed to fix the incorrect assertion
+
+
+</details>
+
+---
+
+<sub>⏱️ 1m 41s</sub>
+
+### 💬 Copilot
+
+
+
+Let me verify the changes were applied correctly.
+
+---
+
+<sub>⏱️ 1m 42s</sub>
+
+### ✅ `bash`
+
+**Check diff of fixed file**
+
+$ cd /home/l00913161/projects/pta_testcase && git --no-pager diff test/api_test/test__from_functional_tensor.py
+
+<details>
+<summary>170 lines</summary>
+
+```diff
+diff --git a/test/api_test/test__from_functional_tensor.py b/test/api_test/test__from_functional_tensor.py
+index 80019d0..78107ff 100644
+--- a/test/api_test/test__from_functional_tensor.py
++++ b/test/api_test/test__from_functional_tensor.py
+@@ -1,49 +1,140 @@
+ """"""
+-测试目的：验证 `torch._from_functional_tensor` 在 NPU 环境下的基础功能行为、返回对象类型和异常分支。
+-API 名称：`torch._from_functional_tensor`
+-覆盖的入参维度：
+-- 参数传参与不传参：覆盖 functional tensor 正常路径和普通 Tensor 异常路径。
+-- 参数为 None / 非 None：覆盖合法 functional Tensor，以及非法 `None`/普通 Tensor。
+-- 枚举/多类型：不适用。
+-- 正常输入：覆盖 NPU functional tensor 还原。
+-- 异常输入：覆盖 `None` 和普通 Tensor。
+-- 边界值和等价类：覆盖最小一维张量。
++测试目的：
++1. 验证 torch._from_functional_tensor 在 NPU 环境下可正常使用。
++2. 验证 round-trip（torch._to_functional_tensor -> torch._from_functional_tensor）过程中，functional wrapper 保持基本属性（device/shape/dtype），且最终返回 Tensor 的 device/shape/dtype/requires_grad 与原始 Tensor 保持一致。
++3. 验证非 functional tensor、非 Tensor 入参以及缺参场景下的异常行为。
++4. 验证多个典型 dtype、shape 和 requires_grad 组合的覆盖情况。
++
++API 名称：torch._from_functional_tensor
++
++覆盖的参数维度表：
++| 维度 | 覆盖情况 | 说明 |
++| --- | --- | --- |
++| t（functional tensor） | 已覆盖 | 通过 torch._to_functional_tensor 构造后再调用 torch._from_functional_tensor |
++| t（普通 NPU Tensor） | 已覆盖 | 传入非 functional tensor，验证异常行为 |
++| t（非 Tensor） | 已覆盖 | 传入 None / int / list，验证类型错误 |
++| 传参 / 缺参 | 已覆盖 | 正常传参与缺参 TypeError 均覆盖 |
++| dtype | 已覆盖 | 默认不传 dtype，以及显式 float16 / float32 / int32 / int64 / bool / float64 |
++| shape | 已覆盖 | 标量、1 维、2 维形状覆盖 |
++| requires_grad | 已覆盖 | 覆盖 True / False 两种场景 |
++| device | 已覆盖 | NPU 设备覆盖 |
++
+ 未覆盖项及原因：
+-- 若环境缺少 `_to_functional_tensor` helper，则子测试会 skip。
++| 未覆盖项 | 原因 |
++| --- | --- |
++| 具体数值正确性校验 | 已在正常 round-trip 场景补充验证返回结果与原始 Tensor 数据一致 |
++| 多 NPU 卡切换 | 当前用例聚焦单卡 NPU 的基础功能，未依赖多卡环境 |
++| CPU / CUDA 路径 | 本测试文件目标是 NPU 功能验证，未覆盖其他设备路径 |
++| 复合输入类型 | API 签名仅接受单个 Tensor 参数，不存在复合输入类型场景 |
+ """"""
+ 
+-import contextlib
+-import io
+-import logging
+-
+ import pytest
+ 
+ import torch
+ import torch_npu  # noqa: F401
+ 
+ 
+-def _require_npu():
+-    if not hasattr(torch, ""npu"") or not torch.npu.is_available():
+-        pytest.skip(""当前环境未检测到可用 NPU，无法验证该 API 的 NPU 行为。"")
+-
+-def test_from_functional_tensor_round_trip_on_npu():
+-    _require_npu()
++def _require_npu_functional_apis():
++    if not hasattr(torch, ""npu""):
++        pytest.skip(""当前环境未暴露 torch.npu，无法在 NPU 上执行 torch._from_functional_tensor 测试。"")
++    if not torch.npu.is_available():
++        pytest.skip(""当前环境 NPU 不可用，无法在 NPU 上执行 torch._from_functional_tensor 测试。"")
++    if not hasattr(torch, ""_sync""):
++        pytest.skip(""当前 PyTorch 版本缺少 torch._sync，无法正确同步 functional tensor 状态。"")
+     if not hasattr(torch, ""_to_functional_tensor""):
+-        pytest.skip(""当前环境缺少 functional tensor helper，无法稳定验证 torch._from_functional_tensor。"")
++        pytest.skip(""当前 PyTorch 版本缺少 torch._to_functional_tensor，无法构造 functional tensor。"")
++    if not hasattr(torch, ""_from_functional_tensor""):
++        pytest.skip(""当前 PyTorch 版本缺少 torch._from_functional_tensor，无法验证功能。"")
++
++
++def _make_npu_tensor(shape, dtype=None):
++    if dtype is None:
++        return torch.ones(shape, device=torch.device(""npu:0""))
++    return torch.ones(shape, device=torch.device(""npu:0""), dtype=dtype)
++
++
++def _to_functional_npu_tensor(tensor):
++    functional_tensor = torch._to_functional_tensor(tensor)
++    torch._sync(functional_tensor)
++    return functional_tensor
++
++
++@pytest.fixture(scope=""module"")
++def npu_device():
++    _require_npu_functional_apis()
++    return torch.device(""npu:0"")
++
++
++@pytest.mark.parametrize(
++    ""shape,dtype,requires_grad"",
++    [
++        ((), None, False),
++        ((), torch.float16, False),
++        ((), torch.float16, True),
++        ((1,), torch.float32, False),
++        ((1,), torch.float32, True),
++        ((2, 3), torch.float64, False),
++        ((2, 3), torch.float64, True),
++        ((2, 3), torch.int32, False),
++        ((1,), torch.int64, False),
++        ((), torch.bool, False),
++    ],
++)
++def test_from_functional_tensor_round_trip_preserves_tensor_properties(npu_device, shape, dtype, requires_grad):
++    """"""验证 functional tensor round-trip 后的类型、设备、形状、dtype 和 requires_grad 保持一致。""""""
++    base_tensor = _make_npu_tensor(shape, dtype=dtype).requires_grad_(requires_grad)
++    functional_tensor = _to_functional_npu_tensor(base_tensor)
++
++    assert isinstance(functional_tensor, torch.Tensor)
++    assert functional_tensor.device.type == ""npu""
++    assert functional_tensor.device.index == 0
++    assert functional_tensor.shape == base_tensor.shape
++    assert functional_tensor.dtype == base_tensor.dtype
++    # Functionalization does not propagate requires_grad to the wrapper
++    assert functional_tensor.requires_grad is False
++
++    out = torch._from_functional_tensor(functional_tensor)
++
++    assert isinstance(out, torch.Tensor)
++    assert out.device.type == ""npu""
++    assert out.device.index == 0
++    assert out.shape == base_tensor.shape
++    assert out.dtype == base_tensor.dtype
++    assert out.requires_grad == base_tensor.requires_grad
++    assert torch.equal(out, base_tensor)
++
++
++def test_from_functional_tensor_round_trip_works_for_scalar_shape(npu_device):
++    """"""验证标量 Tensor 的 round-trip 仍保持 NPU Tensor 属性。""""""
++    base_tensor = _make_npu_tensor((), dtype=torch.float32)
++    functional_tensor = _to_functional_npu_tensor(base_tensor)
++
++    out = torch._from_functional_tensor(functional_tensor)
++
++    assert isinstance(out, torch.Tensor)
++    assert out.device.type == ""npu""
++    assert out.shape == torch.Size([])
++    assert out.dtype == torch.float32
++    assert out.requires_grad is False
++    assert torch.equal(out, base_tensor)
++
++
++def test_from_functional_tensor_non_functional_npu_tensor_raises(npu_device):
++    """"""验证普通 NPU Tensor 不是 functional tensor 时会抛出异常。""""""
++    base_tensor = _make_npu_tensor((2, 3), dtype=torch.float32).requires_grad_(True)
+ 
+-    base = torch.ones(2, device=""npu"")
+-    functional = torch._to_functional_tensor(base)
+-    restored = torch._from_functional_tensor(functional)
++    with pytest.raises(RuntimeError):
++        torch._from_functional_tensor(base_tensor)
+ 
+-    assert isinstance(restored, torch.Tensor)
+-    assert restored.device.type == ""npu""
+-    assert restored is base
+ 
++@pytest.mark.parametrize(""bad_input"", [None, 1, [1, 2, 3], ""abc""])
++def test_from_functional_tensor_non_tensor_input_raises_type_error(npu_device, bad_input):
++    """"""验证非 Tensor 入参会抛出 TypeError。""""""
++    with pytest.raises(TypeError):
++        torch._from_functional_tensor(bad_input)
+ 
+-@pytest.mark.parametrize(""case"", [""none"", ""plain_tensor""])
+-def test_from_functional_tensor_invalid_inputs_raise(case):
+-    _require_npu()
+-    value = None if case == ""none"" else torch.ones(1, device=""npu"")
+ 
+-    with pytest.raises((RuntimeError, TypeError)):
+-        torch._from_functional_tensor(value)
++def test_from_functional_tensor_missing_argument_raises_type_error(npu_device):
++    """"""验证缺参时会抛出 TypeError。""""""
++    with pytest.raises(TypeError):
++        torch._from_functional_tensor()
+<exited with exit code 0>
+```
+
+</details>
+
+
+---
+
+<sub>⏱️ 1m 54s</sub>
+
+### 💬 Copilot
+
+Fix applied correctly. Here's the summary:
+
+**修复摘要 — `torch._from_functional_tensor`**
+
+| 项目 | 内容 |
+|---|---|
+| **根因** | 测试错误断言 `_to_functional_tensor` 会保留 `requires_grad`，但 PyTorch functionalization 设计上不传播该属性到 wrapper |
+| **修复** | 第 93 行 `assert functional_tensor.requires_grad == base_tensor.requires_grad` → `assert functional_tensor.requires_grad is False` |
+| **修改文件** | `test/api_test/test__from_functional_tensor.py`（在 allowed_scopes 内） |
+| **剩余风险** | 无。round-trip 输出的 `out.requires_grad == base_tensor.requires_grad` 断言保留，验证最终结果正确性 |
+
+---
+
+<sub>Generated by [GitHub Copilot CLI](https://github.com/features/copilot/cli)</sub>",runs/20260323T150914Z/fixes/test__from_functional_tensor.md,"[""test/api_test/test__from_functional_tensor.py""]",pytest_passed,runs/20260323T150914Z/summary.md,none,
+torch._prims_common.make_contiguous_strides_for,torch._prims_common.make_contiguous_strides_for,test__prims_common_make_contiguous_strides_for.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],15,15,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch.fx.node.has_side_effect,torch.fx.node.has_side_effect,test_fx_node_has_side_effect.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],13,13,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch.nn.Module.__setattr__,torch.nn.Module.__setattr__,test_nn_Module___setattr__.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],15,15,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch.nn.Module._parameters,torch.nn.Module._parameters,test_nn_Module__parameters.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],11,11,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch._logging.warning_once,torch._logging.warning_once,test__logging_warning_once.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],12,12,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,
+torch.autograd.graph._MultiHandle,torch.autograd.graph._MultiHandle,test_autograd_graph__MultiHandle.py,final,pytest_passed,passed,NONE,未捕获到明确的失败详情。,NONE,未捕获到明确的失败详情。,[],9,9,0,0,0,0,manual_followup,False,False,,,,[],not_run,runs/20260323T150914Z/summary.md,none,

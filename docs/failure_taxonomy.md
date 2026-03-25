@@ -25,6 +25,8 @@
   环境缺少 `torch_npu`、NPU 不可用、基础依赖未满足，或当前运行条件不成立。
 - `UNSUPPORTED_ON_NPU`
   当前 NPU 后端、当前构建、当前 dispatch/layout 组合不支持该 API 路径。
+- `SKIP_HEAVY`
+  测试文件中 skip 数量 > passed 数量且 skip >= 2。通常意味着生成器过度使用 `pytest.skip` 来规避 NPU 不支持的功能，而非让测试自然失败。此类文件不计入通过。
 - `PYTORCH_BUG`
   证据更偏向 `pytorch/` 内部实现问题。
 - `TORCH_NPU_BUG`
@@ -39,12 +41,16 @@
   测试可运行，但覆盖维度或异常/边界场景说明明显不足。
 - `UNKNOWN`
   当前证据不足，无法可靠分类。
+- `NOT_COLLECTED`
+  pytest 阶段没有采集到该 API 对应的测试用例。常见原因包括：测试文件未生成、import 失败导致 pytest 无法收集、或 JUnit 结果匹配异常。
 
 ## Default Fix Mapping
 
 默认修复映射如下：
 
 - `TEST_BUG` -> `adjust_test`
+- `SKIP_HEAVY` -> `adjust_test`（移除不当 skip，让 NPU 不支持的测试自然失败）
+- `NOT_COLLECTED` -> `manual_followup`
 - `ENVIRONMENT_MISSING` -> `manual_followup`
 - `UNSUPPORTED_ON_NPU` -> `manual_followup`
 - `OPERATOR_BUG` -> `manual_followup`
@@ -60,6 +66,7 @@
 - `tests` 模式下只自动修 `TEST_BUG`
 - `safe` 模式只在证据比较明确时，允许低风险源码修复
 - 环境问题、后端不支持、底层算子问题默认先报告，不强行改测试伪造通过
+- **skip 膨胀检测**：修复阶段如果修复后 skip 数量增加，流水线会自动拒绝该修复并回滚测试文件
 
 ## Practical Notes
 

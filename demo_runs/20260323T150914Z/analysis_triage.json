@@ -1,0 +1,17 @@
+[
+  {
+    "canonical_name": "Tensor.new_zeros",
+    "failure_category": "TEST_BUG",
+    "root_cause_summary": "Test expects TypeError for device=123 but NPU runtime raises RuntimeError (invalid device ID). The pytest.raises(TypeError) catches the wrong exception type."
+  },
+  {
+    "canonical_name": "torch.nn.Parameter.device",
+    "failure_category": "TEST_BUG",
+    "root_cause_summary": "Test asserts param.to(npu_device) returns nn.Parameter, but PyTorch Parameter.to() returns a plain Tensor (with grad_fn) when moving to a different device. The isinstance check is an incorrect assumption about .to() semantics."
+  },
+  {
+    "canonical_name": "torch._from_functional_tensor",
+    "failure_category": "TEST_BUG",
+    "root_cause_summary": "Test asserts _to_functional_tensor preserves requires_grad, but PyTorch functionalization intentionally does not propagate requires_grad to the functional wrapper. The assertion is incorrect for this internal API."
+  }
+]
