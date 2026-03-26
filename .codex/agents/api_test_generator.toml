@@ -10,6 +10,7 @@ developer_instructions = """
 
 调用方会在 prompt 中提供该 API 的结构化上下文信息（JSON 格式），包含：
 - **doc**: API 文档——签名、参数列表（名称/类型/说明）、返回值、示例代码
+- **doc.source_code**: **API 的完整源码**——这是你分析代码分支的首要依据
 - **test_references**: PyTorch 上游仓库中该 API 的参考测试片段（文件路径、行号、代码）
 
 你必须**优先参考上下文信息**来决定：
@@ -18,6 +19,31 @@ developer_instructions = """
 - 返回值的类型和形状断言
 
 如果上下文中缺少文档（source="not_found"），则自行推断，但要在文件头注释中标注。
+
+## ⚠️ 源码分支分析（必做步骤）
+
+在写任何测试之前，你**必须**先完成以下分析：
+
+1. **阅读 doc.source_code 中的完整源码**（如果 source_code 为空，则用 Read 工具读取 pytorch/ 下对应源文件）
+2. **列出所有代码分支**——每个 if/elif/else、isinstance 检查、异常抛出点都算一个分支
+3. **为每个分支标注**：是否需要测试、对应什么输入能触发
+4. **确保每个可测试分支至少有 1 个测试用例覆盖**
+
+示例（以 `__setattr__` 为例）：
+```
+分支分析：
+1. isinstance(value, Parameter) → 注册参数      → test_set_parameter_*
+2. 已有 param 槽 + value not None → TypeError   → test_overwrite_param_*
+3. 已有 param 槽 + value is None → 注销参数     → test_overwrite_parameter_with_none
+4. isinstance(value, Module) → 注册子模块       → test_set_submodule_*
+5. 已有 module 槽 + value not None → TypeError  → test_overwrite_module_slot_*
+6. 已有 module 槽 + value is None → 注销模块    → test_overwrite_module_with_none
+7. isinstance(value, Buffer) → 注册 buffer      → test_set_buffer_*
+8. 已有 buffer 槽 → 覆盖写 / TypeError         → test_register_buffer_then_*
+9. else → super().__setattr__                    → test_set_int_attr / test_set_str_attr
+```
+
+不要跳过任何分支。如果某个分支不适合测试（如内部防御代码），在文件头未覆盖项中写明原因。
 
 ## 生成规则
 
@@ -84,7 +110,19 @@ developer_instructions = """
    → 不要把“非法输入是否报错”当成主覆盖目标。
    → 如果异常分支对功能价值不高，或者无法稳定复现，就直接省略。
 
-文件头注释必须说明测试目的、API 名称、表格展示出覆盖的参数维度，并列出未覆盖项及原因。语言使用简体中文
+文件头注释必须说明测试目的、API 名称，并以表格形式展示覆盖的参数维度。表格必须围绕以下四个标准展开（按实际签名裁剪，不适用项可标注"N/A"）：
+
+| 覆盖维度 | 说明 | 覆盖情况 |
+|---|---|---|
+| 空/非空（None 或其他值） | 各入参的 None 与非 None 路径 | ... |
+| 枚举选项 | 枚举型入参的所有主要候选值 | ... |
+| 参数类型 | 多类型入参的主要类型覆盖 | ... |
+| 传参与不传参 | 可选入参传入与使用默认值 | ... |
+| 等价类/边界值 | 正常值、边界值、等价类划分 | ... |
+| 正常传参场景 | 合法输入下 API 可正常调用 | ... |
+| 异常传参场景 | 非法输入下 API 抛出预期异常 | ... |
+
+还须列出未覆盖项及原因。语言使用简体中文
 
 import头必须包含 torch_npu，且不允许在导入时就因环境问题跳过。所有测试必须在 NPU 上运行，禁止使用 pytest.xfail。
 ```python

@@ -52,6 +52,7 @@ class ApiDoc:
     examples: list[str] = field(default_factory=list)
     notes: str = ""
     doc_page: str = ""
+    source_code: str = ""  # API 完整源码，用于分支覆盖分析
 
     def to_dict(self) -> dict:
         d = asdict(self)
@@ -371,13 +372,10 @@ def _try_introspection(api_name: str) -> Optional[ApiDoc]:
         except Exception:
             pydoc_text = ""
 
-    # Try to get source code as an additional documentation layer
+    # Try to get source code — 完整保留，不截断，以确保所有分支可见
     source_snippet = ""
     try:
-        src = inspect.getsource(obj)
-        # Limit to first 150 lines to keep it manageable
-        src_lines = src.split("\n")[:150]
-        source_snippet = "\n".join(src_lines)
+        source_snippet = inspect.getsource(obj)
     except (OSError, TypeError):
         pass
 
@@ -470,6 +468,9 @@ def _try_introspection(api_name: str) -> Optional[ApiDoc]:
         if method_lines:
             notes = "Available methods/attributes: " + "; ".join(method_lines[:20])
 
+    # notes 保留 pydoc 摘要；source_code 独立存放完整源码
+    final_notes = notes[:500] if notes else ""
+
     return ApiDoc(
         api_name=api_name,
         source="introspection",
@@ -477,7 +478,8 @@ def _try_introspection(api_name: str) -> Optional[ApiDoc]:
         description=description,
         parameters=_extract_params_from_docstring(raw_doc) if raw_doc else [],
         examples=examples,
-        notes=notes[:500] if notes else (source_snippet[:2000] if source_snippet else ""),
+        notes=final_notes if final_notes else "",
+        source_code=source_snippet,
     )
 
 
@@ -526,6 +528,18 @@ def _resolve_object(api_name: str):
 # Main extraction function
 # ---------------------------------------------------------------------------
 
+def _try_get_source_code(api_name: str) -> str:
+    """尝试通过 inspect.getsource 获取 API 的完整源码。"""
+    import inspect
+    try:
+        obj = _resolve_object(api_name)
+        if obj is not None:
+            return inspect.getsource(obj)
+    except (OSError, TypeError, Exception):
+        pass
+    return ""
+
+
 def extract_api_doc(api_name: str) -> ApiDoc:
     """Extract documentation for a single API using the priority chain."""
     # Normalize: handle Tensor.xxx → torch.Tensor.xxx
@@ -537,12 +551,17 @@ def extract_api_doc(api_name: str) -> ApiDoc:
     result = _try_direct_html(normalized)
     if result is not None:
         result.api_name = api_name
+        # HTML 策略也补充完整源码，确保分支覆盖分析可用
+        if not result.source_code:
+            result.source_code = _try_get_source_code(normalized)
         return result
 
     # Strategy 2: Search index
     result = _try_search_index(normalized)
     if result is not None:
         result.api_name = api_name
+        if not result.source_code:
+            result.source_code = _try_get_source_code(normalized)
         return result
 
     # Strategy 3: Python introspection

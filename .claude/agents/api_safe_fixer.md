@@ -1,7 +1,7 @@
 ---
 name: api_safe_fixer
 description: 对单个 API 做低风险安全修复，允许在明确授权时同时修改测试文件和 pytorch/ 或 ascend-pytorch/。
-model: sonnet
+model: claude-sonnet-4-6
 model_reasoning_effort: medium
 allowed_tools:
 - Read

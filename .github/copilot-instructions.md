@@ -18,15 +18,17 @@
   - API 名称
   - 覆盖的入参维度
 
-## Coverage rules
-必须尽量覆盖该 API 的所有入参维度（按实际签名裁剪）：
-1. 参数传参与不传参
-2. 参数为 None / 非 None
-3. 枚举选项的所有主要候选值
-4. 支持多类型时覆盖主要类型
-5. 正常输入
-6. 异常输入
-7. 边界值和等价类
+## Coverage rules（API 一致性标准）
+对于通过构造用例验证的接口功能一致性，基础标准是所有入参全覆盖，覆盖包括不限于：
+1. 某个入参为空和非空（None 或其他值）
+2. 某个入参的所有可能选项（枚举候选值，例如 "tanh"、"gaussian"）
+3. 某个入参的所有可能类型（int、list、Tensor 等）
+4. 可选入参传参与不传参
+
+通过等价类划分、边界值分析等测试手段扩充用例，并覆盖正常传参与异常传参场景。
+
+### 源码分支覆盖（强制要求）
+仅靠参数维度覆盖不够。生成测试前**必须阅读 API 完整源码**，列出所有代码分支（if/elif/else、isinstance 检查、异常抛出点），确保每个可测试分支至少有 1 个测试用例覆盖。如果某分支不适合测试，须在文件头未覆盖项中说明原因。
 
 ## Assertion rules
 断言聚焦于：
@@ -37,10 +39,17 @@
 - 不要求校验具体数值正确性
 
 ## Failure handling
-- 如果某个 API 在当前环境无法可靠构造最小可运行用例，使用 `pytest.skip`
+- `pytest.skip` **仅限**以下场景使用：
+  1. 当前 PyTorch 版本未暴露该 API（`hasattr` 检查失败）
+  2. `torch_npu` 模块无法 import（环境缺失）
+  3. NPU 设备不可用（`torch.npu.is_available()` 为 False）
+- **严禁**对"NPU 后端不支持某功能"使用 `pytest.skip`。如果 NPU 不支持某操作（如 `Event.elapsed_time`），应让测试自然失败（`RuntimeError` / `NotImplementedError`），由流水线记录为 `UNSUPPORTED_ON_NPU`
 - 禁止使用 `pytest.xfail`
-- 必须写清楚原因
+- 必须写清楚 skip 原因
 - 不要伪造覆盖
+- Fix 阶段严禁通过增加 `pytest.skip` 来假装修复。如果 NPU 后端不支持某功能导致测试失败，应保持失败状态
+- 流水线会自动检测 skip 膨胀（修复后 skip 数量增加）并拒绝此类修复
+- 当 skip 数量 > passed 数量且 skip >= 2 时，测试文件会被标记为 `skip_heavy`，不计入通过
 
 ## Pipeline stages
 - manifest / report / orchestration 阶段允许修改仓库中的脚本和文档，用于支撑批处理流水线

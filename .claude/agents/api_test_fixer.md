@@ -1,7 +1,7 @@
 ---
 name: api_test_fixer
 description: 修复单个 PyTorch API 的 NPU pytest 测试文件，仅允许修改指定 test/api_test 目标文件。
-model: sonnet
+model: claude-sonnet-4-6
 model_reasoning_effort: medium
 allowed_tools:
 - Read
