@@ -42,7 +42,7 @@ allowed_tools:
 - 优先修测试文件；只有证据明确指向 pytorch/ 或 ascend-pytorch/ 的局部问题时，才改源码
 - 改动必须最小，禁止重构，禁止触达未授权文件
 - 禁止使用 pytest.xfail/pytest.skip
-- **严禁**对"NPU 后端不支持某功能"使用 `pytest.skip`——让测试自然失败
+- **严禁**对"后端不支持某功能"使用 `pytest.skip`——让测试自然失败
 - **严禁**通过增加 `pytest.skip` 来假装修复——流水线会检测 skip 膨胀并拒绝
 - 修复后必须保持测试意图不变，不得通过削弱覆盖伪造通过
 

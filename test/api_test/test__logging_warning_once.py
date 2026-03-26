@@ -1,4 +1,4 @@
-# 测试目的：验证 torch._logging.warning_once 在 NPU 环境中的功能行为
+# 测试目的：验证 torch._logging.warning_once 的功能行为
 # API 名称：torch._logging.warning_once
 #
 # 覆盖的参数维度：
@@ -22,7 +22,6 @@ import logging
 import pytest
 
 import torch
-import torch_npu  # noqa: F401
 
 
 # ---------------------------------------------------------------------------

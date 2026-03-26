@@ -1,0 +1,2 @@
+Tensor.to
+Tensor.view

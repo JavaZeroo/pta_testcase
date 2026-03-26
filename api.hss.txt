@@ -1,0 +1,4 @@
+torch.nn.Module.__setattr__
+torch.nn.Module._parameters
+torch._logging.warning_once
+torch.autograd.graph._MultiHandle

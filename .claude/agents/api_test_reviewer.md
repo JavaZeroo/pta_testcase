@@ -1,6 +1,6 @@
 ---
 name: api_test_reviewer
-description: 检查 NPU API 测试文件是否符合项目规范。
+description: 检查 API 测试文件是否符合双后端（NPU/GPU）项目规范。
 model: claude-sonnet-4-6
 model_reasoning_effort: medium
 allowed_tools:
@@ -38,8 +38,9 @@ doc.source_code（完整源码）和 test_references（上游参考测试）。
 
 - 文件名是否正确
 - 是否位于 test/api_test/
-- 是否导入 torch_npu
-- 是否显式在 NPU 上运行（重要检查项！）
+- **是否错误地 `import torch_npu`**（应由 conftest 处理，测试文件中禁止直接导入）
+- **是否硬编码 `"npu"` 或 `"cuda"` 作为 device**（应使用 `device` fixture）
+- 是否通过 `device` fixture 在加速卡上运行（重要检查项！）
 - 是否使用 pytest
 - 是否包含正常和异常场景
 - 异常是否使用 pytest.raises
@@ -48,7 +49,7 @@ doc.source_code（完整源码）和 test_references（上游参考测试）。
 - 是否存在明显漏参、漏类型、漏枚举问题
 - 是否存在伪覆盖
 - 是否错误使用 pytest.xfail/pytest.skip （严禁使用）
-- **严禁**对"NPU 后端不支持某功能"使用 pytest.skip——这类场景应让测试自然失败
+- **严禁**对"后端不支持某功能"使用 pytest.skip——这类场景应让测试自然失败
 
 输出：
 - 通过 / 不通过

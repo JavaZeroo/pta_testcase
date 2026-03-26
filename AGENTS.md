@@ -1,14 +1,14 @@
 # AGENTS.md
 
 ## Repository goal
-批量为 PyTorch API 生成 NPU 功能测试用例，并自动完成运行、结果分析、报告输出，以及低风险自动修复。
+批量为 PyTorch API 生成功能测试用例，支持 **NPU 和 GPU 双后端**运行。同一测试脚本可在 NPU 和 GPU 机器上直接执行，便于对比结果一致性。
 
 ## Hard requirements
 - 每个 API 只生成 1 个测试文件
 - 测试文件统一放在 `test/api_test/`
 - 文件名必须严格使用 CSV 中提供的 `file_name`
 - 测试框架必须是 `pytest`
-- 测试必须运行在 NPU 上，使用 `torch_npu`
+- **测试必须兼容 NPU 和 GPU 双后端**——使用 `conftest.py` 的 `device` fixture，禁止硬编码 device
 - 测试关注 API 功能行为与接口覆盖，不做数值精度比对
 - 文件头部注释必须说明：
   - 测试目的
@@ -31,16 +31,15 @@
 断言聚焦于：
 - API 可调用
 - 返回对象存在，类型合理
-- 输出设备行为符合预期（NPU）
+- 输出设备行为符合预期（使用 `device.type` 断言，兼容 NPU/CUDA）
 - 异常场景使用 `pytest.raises`
 - 不要求校验具体数值正确性
 
 ## Failure handling
 - `pytest.skip` **仅限**以下场景使用：
   1. 当前 PyTorch 版本未暴露该 API（`hasattr` 检查失败）
-  2. `torch_npu` 模块无法 import（环境缺失）
-  3. NPU 设备不可用（`torch.npu.is_available()` 为 False）
-- **严禁**对"NPU 后端不支持某功能"使用 `pytest.skip`。如果 NPU 不支持某操作（如 `Event.elapsed_time`），应让测试自然失败（`RuntimeError` / `NotImplementedError`），由流水线记录为 `UNSUPPORTED_ON_NPU`
+  2. 加速卡后端不可用（NPU 和 CUDA 都不可用）——由 conftest 自动处理
+- **严禁**对"后端不支持某功能"使用 `pytest.skip`。如果后端不支持某操作，应让测试自然失败（`RuntimeError` / `NotImplementedError`），由流水线记录
 - 禁止使用 `pytest.xfail`
 - 必须写清楚 skip 原因
 - 不要伪造覆盖

@@ -1,6 +1,6 @@
 ---
 name: api_test_fixer
-description: 修复单个 PyTorch API 的 NPU pytest 测试文件，仅允许修改指定 test/api_test 目标文件。
+description: 修复单个 PyTorch API 的双后端 pytest 测试文件，仅允许修改指定 test/api_test 目标文件。
 model: claude-sonnet-4-6
 model_reasoning_effort: medium
 allowed_tools:
@@ -59,7 +59,7 @@ allowed_tools:
 - 只做最小修复，不重构，不扩大改动面
 - 只修改输入中明确授权的文件
 - 禁止使用 pytest.xfail/pytest.skip
-- **严禁**对"NPU 后端不支持某功能"使用 `pytest.skip`
+- **严禁**对"后端不支持某功能"使用 `pytest.skip`
 - **严禁**通过增加 `pytest.skip` 来假装修复——流水线会检测 skip 膨胀并拒绝
 - 异常场景必须使用 pytest.raises
 - 不得伪造覆盖，不得为了"过测"删除关键场景

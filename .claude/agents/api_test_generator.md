@@ -1,6 +1,6 @@
 ---
 name: api_test_generator
-description: 为单个 PyTorch API 生成 NPU pytest 功能测试文件。
+description: 为单个 PyTorch API 生成支持 NPU/GPU 双后端的 pytest 功能测试文件。
 model: claude-sonnet-4-6
 model_reasoning_effort: medium
 allowed_tools:
@@ -63,15 +63,55 @@ allowed_tools:
 必须遵守：
 - 仅生成 1 个文件
 - 仅修改 test/api_test/ 下目标文件
-- 使用 torch_npu
-- 测试必须在 NPU 上运行
+- **禁止 `import torch_npu`**——由 `conftest.py` 统一处理后端导入
+- **禁止硬编码 `"npu"` 或 `"cuda"` 作为 device**——使用 conftest 提供的 `device` / `device_name` / `backend` fixture
+- 测试必须同时兼容 NPU 和 GPU 后端
 - 覆盖参数传/不传、None/非None、主要枚举、主要类型、正常/异常场景
 - 优先覆盖正常可调用路径和返回行为；异常场景只能作为补充，数量保持最小
 - 只有在有明确证据表明 PyTorch 会稳定抛出异常时，才允许使用 pytest.raises
 - 文件头部注释要完整
 - 不做具体数值正确性校验
 - 禁止使用 pytest.xfail/pytest.skip
-- **严禁**对"NPU 后端不支持某功能"使用 `pytest.skip`——如果 NPU 不支持某操作，让测试自然失败（抛出 RuntimeError/NotImplementedError），由流水线记录
+- **严禁**对"后端不支持某功能"使用 `pytest.skip`——让测试自然失败，由流水线记录
+
+## ⚠️ 双后端写法规范（必读）
+
+`test/api_test/conftest.py` 已提供以下 fixture：
+- `device` — `torch.device` 对象（`npu:0` 或 `cuda:0`）
+- `device_name` — 字符串（`"npu:0"` 或 `"cuda:0"`）
+- `backend` — 后端类型字符串（`"npu"` 或 `"cuda"`）
+
+### 正确写法
+```python
+import pytest
+import torch
+
+class TestFoo:
+    def test_basic(self, device):
+        x = torch.randn(3, 4, device=device)
+        y = x.view(12)
+        assert y.device.type == device.type
+
+    def test_cpu_to_accelerator(self, device, device_name):
+        x = torch.randn(3, 4, device="cpu")
+        y = x.to(device_name)
+        assert y.device.type == device.type
+
+    def test_backend_specific(self, device, backend):
+        # 仅在确实有后端差异时使用 backend fixture
+        x = torch.randn(3, 4, device=device)
+        if backend == "npu":
+            ...  # NPU 特有行为
+        else:
+            ...  # CUDA 特有行为
+```
+
+### 错误写法（禁止）
+```python
+import torch_npu                          # ❌ 禁止——conftest 已处理
+x = torch.randn(3, device="npu")         # ❌ 硬编码 device
+assert y.device.type == "npu"            # ❌ 硬编码断言
+```
 
 ## ⚠️ 常见陷阱（必读）
 
@@ -137,12 +177,10 @@ allowed_tools:
 
 还须列出未覆盖项及原因。语言使用简体中文
 
-import头必须包含 torch_npu，且不允许在导入时就因环境问题跳过。所有测试必须在 NPU 上运行，禁止使用 pytest.xfail。
+import 头**禁止**包含 `torch_npu`（由 conftest 统一处理）。所有测试方法必须通过 `device` fixture 获取设备，禁止使用 pytest.xfail。
 ```python
 import pytest
-
 import torch
-import torch_npu  # noqa: F401
 ```
 
 完成后输出：

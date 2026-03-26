@@ -1,4 +1,4 @@
-# 测试目的：验证 torch.__future__.get_swap_module_params_on_conversion 在 NPU 环境下可正常调用，
+# 测试目的：验证 torch.__future__.get_swap_module_params_on_conversion 在加速卡环境下可正常调用，
 #           返回类型为 bool，并与 set_swap_module_params_on_conversion 联动行为正确。
 #
 # API 名称：torch.__future__.get_swap_module_params_on_conversion
@@ -20,7 +20,6 @@
 
 import pytest
 import torch
-import torch_npu  # noqa: F401
 
 
 # ---------------------------------------------------------------------------
@@ -38,9 +37,6 @@ if not hasattr(torch.__future__, "get_swap_module_params_on_conversion"):
         "当前 PyTorch 版本未暴露该 API",
         allow_module_level=True,
     )
-
-if not torch.npu.is_available():
-    pytest.skip("NPU 设备不可用，跳过全部测试", allow_module_level=True)
 
 
 # ---------------------------------------------------------------------------
@@ -70,10 +66,8 @@ class TestGetSwapModuleParamsOnConversionDefault:
         result = torch.__future__.get_swap_module_params_on_conversion()
         assert result is False
 
-    def test_callable_on_npu_environment(self):
-        """在 NPU 环境中 API 可正常调用，无需 NPU tensor，但需 NPU 可用。"""
-        # 确认 NPU 可用后调用，验证 NPU 环境不影响此 API 的可调用性
-        assert torch.npu.is_available()
+    def test_callable_on_accelerator_environment(self, backend):
+        """在加速卡环境中 API 可正常调用，验证环境不影响此 API 的可调用性。"""
         result = torch.__future__.get_swap_module_params_on_conversion()
         assert isinstance(result, bool)
 
@@ -114,25 +108,25 @@ class TestGetSwapModuleParamsOnConversionWithSetter:
 
 
 class TestGetSwapModuleParamsOnConversionWithNNModule:
-    """测试在实际使用 nn.Module 的 NPU 场景中，get 的语义是否正确反映。"""
+    """测试在实际使用 nn.Module 的加速卡场景中，get 的语义是否正确反映。"""
 
-    def test_module_conversion_with_swap_false(self):
-        """swap 为 False 时，nn.Module.to(npu) 可正常执行，get 返回 False。"""
+    def test_module_conversion_with_swap_false(self, device_name):
+        """swap 为 False 时，nn.Module.to(device) 可正常执行，get 返回 False。"""
         torch.__future__.set_swap_module_params_on_conversion(False)
         assert torch.__future__.get_swap_module_params_on_conversion() is False
 
         import torch.nn as nn
         model = nn.Linear(4, 4)
-        # .to(npu) 触发参数转换，验证此时 get 仍正确反映全局状态
-        model = model.to("npu")
+        # .to(device) 触发参数转换，验证此时 get 仍正确反映全局状态
+        model = model.to(device_name)
         assert torch.__future__.get_swap_module_params_on_conversion() is False
 
-    def test_module_conversion_with_swap_true(self):
-        """swap 为 True 时，nn.Module.to(npu) 可正常执行，get 返回 True。"""
+    def test_module_conversion_with_swap_true(self, device_name):
+        """swap 为 True 时，nn.Module.to(device) 可正常执行，get 返回 True。"""
         torch.__future__.set_swap_module_params_on_conversion(True)
         assert torch.__future__.get_swap_module_params_on_conversion() is True
 
         import torch.nn as nn
         model = nn.Linear(4, 4)
-        model = model.to("npu")
+        model = model.to(device_name)
         assert torch.__future__.get_swap_module_params_on_conversion() is True

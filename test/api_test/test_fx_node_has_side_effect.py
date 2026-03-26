@@ -1,4 +1,4 @@
-# 测试目的：验证 torch.fx.node.has_side_effect 在 NPU 环境下的功能行为。
+# 测试目的：验证 torch.fx.node.has_side_effect 在加速卡环境下的功能行为。
 # API 名称：torch.fx.node.has_side_effect
 #
 # 覆盖参数维度：
@@ -7,7 +7,7 @@
 # |--------------------|----------------------------------------------------------|-------------------------------------------------------|
 # | 空/非空            | fn 必须为 Callable，无 None 路径（源码无 None 判断）     | 仅覆盖非空 Callable                                   |
 # | 枚举选项           | N/A（无枚举参数）                                        | N/A                                                   |
-# | 参数类型           | fn 可为普通函数、lambda、含 NPU tensor 操作的函数        | 覆盖普通函数、lambda、NPU tensor 操作函数             |
+# | 参数类型           | fn 可为普通函数、lambda、含加速卡 tensor 操作的函数      | 覆盖普通函数、lambda、加速卡 tensor 操作函数          |
 # | 传参与不传参       | fn 为必填参数，无可选参数                                | 覆盖必填参数传入                                      |
 # | 等价类/边界值      | 同一函数重复注册、多个不同函数注册                       | 覆盖重复注册、多函数注册                              |
 # | 正常传参场景       | 合法 Callable 传入后 API 可正常调用并返回原函数          | 覆盖装饰器用法、直接调用用法、返回值验证              |
@@ -21,34 +21,23 @@
 # 未覆盖项说明：
 #   - 未覆盖 fn=None 或非 Callable 的情况：源码未做类型校验，Python set.add() 接受任意对象，
 #     无法预测其是否稳定抛出异常，故不生成相关负例。
-#   - 未覆盖 FX trace + 完整 DCE 集成测试中 NPU 算子的 IR 节点存活：
-#     FX symbolic trace 在 NPU tensor 直接操作时可能遇到 tracer 兼容问题，
+#   - 未覆盖 FX trace + 完整 DCE 集成测试中加速卡算子的 IR 节点存活：
+#     FX symbolic trace 在加速卡 tensor 直接操作时可能遇到 tracer 兼容问题，
 #     此部分依赖 torch.fx.symbolic_trace，超出本 API 单元测试范围。
 
 import pytest
 
 import torch
-import torch_npu  # noqa: F401
 import torch.fx
 from torch.fx.node import has_side_effect, _side_effectful_functions
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# 前置检查（仅在 NPU 不可用时 skip）
-# ─────────────────────────────────────────────────────────────────────────────
-
-@pytest.fixture(scope="session", autouse=True)
-def require_npu():
-    if not torch.npu.is_available():
-        pytest.skip("NPU device is not available")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 辅助函数
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _make_npu_tensor():
-    return torch.tensor([1.0, 2.0, 3.0], device="npu")
+def _make_device_tensor(device):
+    return torch.tensor([1.0, 2.0, 3.0], device=device)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -133,7 +122,6 @@ class TestSideEffectfulFunctionsRegistration:
         def unique_func_for_registration():
             pass
 
-        # 确保之前不在集合中（或刚注册进去后在集合中）
         has_side_effect(unique_func_for_registration)
         assert unique_func_for_registration in _side_effectful_functions
 
@@ -163,51 +151,51 @@ class TestSideEffectfulFunctionsRegistration:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 测试：在包含 NPU tensor 操作的函数上使用
+# 测试：在包含加速卡 tensor 操作的函数上使用
 # ─────────────────────────────────────────────────────────────────────────────
 
-class TestHasSideEffectWithNPUOperations:
-    def test_npu_operation_function_registered(self):
-        """对包含 NPU tensor 操作的函数使用 has_side_effect，函数注册成功。"""
+class TestHasSideEffectWithDeviceOperations:
+    def test_device_operation_function_registered(self, device):
+        """对包含加速卡 tensor 操作的函数使用 has_side_effect，函数注册成功。"""
         @has_side_effect
-        def npu_op(t):
+        def device_op(t):
             return t + 1
 
-        assert npu_op in _side_effectful_functions
+        assert device_op in _side_effectful_functions
 
-    def test_npu_operation_function_still_callable(self):
-        """被注册为副作用函数后，原函数仍然可以正常调用并在 NPU 上运行。"""
+    def test_device_operation_function_still_callable(self, device):
+        """被注册为副作用函数后，原函数仍然可以正常调用并在加速卡上运行。"""
         @has_side_effect
-        def npu_add(t):
+        def device_add(t):
             return t + 1
 
-        x = _make_npu_tensor()
-        result = npu_add(x)
+        x = _make_device_tensor(device)
+        result = device_add(x)
         assert result is not None
-        assert result.device.type == "npu"
+        assert result.device.type == device.type
 
-    def test_npu_inplace_function_registered(self):
+    def test_device_inplace_function_registered(self, device):
         """对原地操作函数使用 has_side_effect，函数成功注册并可调用。"""
         @has_side_effect
-        def npu_fill_(t, val):
+        def device_fill_(t, val):
             t.fill_(val)
             return t
 
-        x = _make_npu_tensor()
-        result = npu_fill_(x, 0.0)
+        x = _make_device_tensor(device)
+        result = device_fill_(x, 0.0)
         assert result is not None
-        assert result.device.type == "npu"
-        assert npu_fill_ in _side_effectful_functions
+        assert result.device.type == device.type
+        assert device_fill_ in _side_effectful_functions
 
-    def test_npu_tensor_creation_function_registered(self):
-        """对创建 NPU tensor 的函数使用 has_side_effect，注册并调用均正常。"""
+    def test_device_tensor_creation_function_registered(self, device):
+        """对创建加速卡 tensor 的函数使用 has_side_effect，注册并调用均正常。"""
         @has_side_effect
-        def make_zeros():
-            return torch.zeros(4, device="npu")
+        def make_zeros(dev):
+            return torch.zeros(4, device=dev)
 
-        result = make_zeros()
+        result = make_zeros(device)
         assert result is not None
-        assert result.device.type == "npu"
+        assert result.device.type == device.type
         assert make_zeros in _side_effectful_functions
 
 
@@ -222,7 +210,6 @@ class TestHasSideEffectInFXGraph:
         def my_side_effect_fn(x):
             return x
 
-        # 构造一个简单的 FX 图，调用已注册的副作用函数
         graph = torch.fx.Graph()
         x = graph.placeholder("x")
         call_node = graph.call_function(my_side_effect_fn, (x,))
@@ -235,7 +222,6 @@ class TestHasSideEffectInFXGraph:
         def pure_fn(x):
             return x
 
-        # 确保未注册（不调用 has_side_effect）
         if pure_fn in _side_effectful_functions:
             pytest.skip("pure_fn already in _side_effectful_functions, test state contaminated")
 
@@ -250,18 +236,14 @@ class TestHasSideEffectInFXGraph:
         """DCE 不应移除被标记为副作用的无用节点（无直接用户）。"""
         @has_side_effect
         def my_effectful_sink(x):
-            # 模拟一个无返回值被使用、但有副作用的函数
             pass
 
-        # 构造图：调用副作用函数，但结果不被 output 使用
         graph = torch.fx.Graph()
         x = graph.placeholder("x")
         side_effect_node = graph.call_function(my_effectful_sink, (x,))
-        # output 不使用 side_effect_node
         graph.output(x)
 
         changed = graph.eliminate_dead_code()
-        # 副作用节点应被保留，故 DCE 不应将其移除
         node_targets = [n.target for n in graph.nodes if n.op == "call_function"]
         assert my_effectful_sink in node_targets, (
             "has_side_effect 标记的函数节点不应被 DCE 移除"

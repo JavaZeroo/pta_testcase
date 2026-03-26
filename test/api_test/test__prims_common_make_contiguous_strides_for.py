@@ -1,4 +1,4 @@
-# 测试目的：验证 torch._prims_common.make_contiguous_strides_for 在 NPU 环境下的功能行为与接口覆盖
+# 测试目的：验证 torch._prims_common.make_contiguous_strides_for 在加速卡环境下的功能行为与接口覆盖
 # API 名称：torch._prims_common.make_contiguous_strides_for
 #
 # 覆盖参数维度：
@@ -32,19 +32,13 @@
 
 import pytest
 import torch
-import torch_npu  # noqa: F401
 
 
-def setup_module(module):
-    """确保 NPU 可用，否则跳过整个模块。"""
-    if not torch.npu.is_available():
-        pytest.skip("NPU not available")
+if not hasattr(torch._prims_common, "make_contiguous_strides_for"):
+    pytest.skip("torch._prims_common.make_contiguous_strides_for not available", allow_module_level=True)
 
 
 def get_api():
-    """获取被测 API，若不存在则跳过。"""
-    if not hasattr(torch._prims_common, "make_contiguous_strides_for"):
-        pytest.skip("torch._prims_common.make_contiguous_strides_for not available")
     return torch._prims_common.make_contiguous_strides_for
 
 
@@ -89,7 +83,6 @@ class TestEmptyShape:
         assert result == ()
 
     def test_empty_shape_row_major_false(self):
-        """row_major=False 且 shape 为空时，len(shape) < 2，走相同路径。"""
         fn = get_api()
         result = fn((), row_major=False)
         assert result == ()
@@ -103,34 +96,29 @@ class TestRowMajorTrue:
     """row_major=True 时返回 C 连续（行主序）步长。"""
 
     def test_1d_default(self):
-        """1D shape，默认 row_major=True。"""
         fn = get_api()
         result = fn((5,))
         assert len(result) == 1
         assert result == (1,)
 
     def test_1d_explicit_row_major(self):
-        """1D shape，显式传 row_major=True。"""
         fn = get_api()
         result = fn((5,), row_major=True)
         assert result == (1,)
 
     def test_2d_row_major(self):
-        """2D shape，行主序步长：stride[0]=4, stride[1]=1。"""
         fn = get_api()
         result = fn((3, 4))
         assert len(result) == 2
         assert result == (4, 1)
 
     def test_3d_row_major(self):
-        """3D shape，行主序步长：(3*4, 4, 1) = (12, 4, 1)。"""
         fn = get_api()
         result = fn((2, 3, 4))
         assert len(result) == 3
         assert result == (12, 4, 1)
 
     def test_4d_row_major(self):
-        """4D shape，步长维度数与 shape 一致。"""
         fn = get_api()
         result = fn((2, 3, 4, 5))
         assert len(result) == 4
@@ -145,32 +133,26 @@ class TestRowMajorFalse:
     """row_major=False 的 Fortran 连续步长逻辑。"""
 
     def test_row_major_false_1d(self):
-        """1D 时 len(shape) < 2，row_major=False 走 return result 分支，结果与 True 相同。"""
         fn = get_api()
         result_true = fn((5,), row_major=True)
         result_false = fn((5,), row_major=False)
         assert result_true == result_false
 
     def test_row_major_false_2d(self):
-        """2D 时走 Fortran 路径：最后两维变成 (1, max(shape[-2], 1))。"""
         fn = get_api()
         result = fn((3, 4), row_major=False)
-        # result[:-2] = ()，后两维 = (1, max(3, 1)) = (1, 3)
         assert len(result) == 2
         assert result[-1] == max(3, 1)
         assert result[-2] == 1
 
     def test_row_major_false_3d(self):
-        """3D 时前缀步长保留，最后两维变成 Fortran 格式。"""
         fn = get_api()
         result = fn((2, 3, 4), row_major=False)
         assert len(result) == 3
-        # result[:-2] 保留前缀，最后两维 = (1, max(shape[-2], 1)) = (1, max(3, 1)) = (1, 3)
         assert result[-2] == 1
         assert result[-1] == max(3, 1)
 
     def test_row_major_false_4d(self):
-        """4D 时验证前两维步长保留，最后两维为 Fortran 格式。"""
         fn = get_api()
         result = fn((2, 3, 4, 5), row_major=False)
         assert len(result) == 4
@@ -178,7 +160,6 @@ class TestRowMajorFalse:
         assert result[-1] == max(4, 1)
 
     def test_row_major_false_empty_shape(self):
-        """空 shape 时 row_major=False 返回空元组。"""
         fn = get_api()
         result = fn((), row_major=False)
         assert result == ()
@@ -192,7 +173,6 @@ class TestShapeWithZeroDim:
     """含零维度时 sym_max(l, 1) 使步长计算基于 1 而非 0。"""
 
     def test_1d_zero_dim(self):
-        """单维为 0 时步长应为 1（从 sym_max(0, 1)=1 开始反向乘）。"""
         fn = get_api()
         result = fn((0,))
         assert isinstance(result, tuple)
@@ -200,25 +180,20 @@ class TestShapeWithZeroDim:
         assert result == (1,)
 
     def test_2d_with_zero_first_dim(self):
-        """第一维为 0，第二维为 4。"""
         fn = get_api()
         result = fn((0, 4))
         assert isinstance(result, tuple)
         assert len(result) == 2
-        # stride[1]=1, stride[0]=sym_max(4,1)=4
         assert result == (4, 1)
 
     def test_2d_with_zero_second_dim(self):
-        """第一维为 3，第二维为 0。"""
         fn = get_api()
         result = fn((3, 0))
         assert isinstance(result, tuple)
         assert len(result) == 2
-        # stride[1]=1, stride[0]=sym_max(0,1)=1
         assert result == (1, 1)
 
     def test_2d_both_zero(self):
-        """两维均为 0。"""
         fn = get_api()
         result = fn((0, 0))
         assert isinstance(result, tuple)
@@ -226,7 +201,6 @@ class TestShapeWithZeroDim:
         assert result == (1, 1)
 
     def test_row_major_false_with_zero(self):
-        """row_major=False + 含零维度。"""
         fn = get_api()
         result = fn((0, 4), row_major=False)
         assert isinstance(result, tuple)
@@ -268,42 +242,42 @@ class TestShapeWithOneDim:
 # ---------------------------------------------------------------------------
 
 class TestCompareWithTensorStrides:
-    """在 NPU 上创建 tensor，验证 API 计算结果与 tensor.stride() 一致。"""
+    """在加速卡上创建 tensor，验证 API 计算结果与 tensor.stride() 一致。"""
 
-    def _npu_strides(self, shape):
-        """在 NPU 上创建连续 tensor 并返回其 strides。"""
-        t = torch.empty(shape, device="npu")
+    def _device_strides(self, shape, device):
+        """在加速卡上创建连续 tensor 并返回其 strides。"""
+        t = torch.empty(shape, device=device)
         return t.stride()
 
-    def test_1d_matches_tensor(self):
+    def test_1d_matches_tensor(self, device):
         fn = get_api()
         shape = (7,)
-        assert fn(shape) == self._npu_strides(shape)
+        assert fn(shape) == self._device_strides(shape, device)
 
-    def test_2d_matches_tensor(self):
+    def test_2d_matches_tensor(self, device):
         fn = get_api()
         shape = (3, 4)
-        assert fn(shape) == self._npu_strides(shape)
+        assert fn(shape) == self._device_strides(shape, device)
 
-    def test_3d_matches_tensor(self):
+    def test_3d_matches_tensor(self, device):
         fn = get_api()
         shape = (2, 3, 4)
-        assert fn(shape) == self._npu_strides(shape)
+        assert fn(shape) == self._device_strides(shape, device)
 
-    def test_4d_matches_tensor(self):
+    def test_4d_matches_tensor(self, device):
         fn = get_api()
         shape = (2, 3, 4, 5)
-        assert fn(shape) == self._npu_strides(shape)
+        assert fn(shape) == self._device_strides(shape, device)
 
-    def test_large_shape_matches_tensor(self):
+    def test_large_shape_matches_tensor(self, device):
         fn = get_api()
         shape = (8, 16, 32, 64)
-        assert fn(shape) == self._npu_strides(shape)
+        assert fn(shape) == self._device_strides(shape, device)
 
-    def test_shape_with_one_matches_tensor(self):
+    def test_shape_with_one_matches_tensor(self, device):
         fn = get_api()
         shape = (1, 4, 1, 8)
-        assert fn(shape) == self._npu_strides(shape)
+        assert fn(shape) == self._device_strides(shape, device)
 
 
 # ---------------------------------------------------------------------------
