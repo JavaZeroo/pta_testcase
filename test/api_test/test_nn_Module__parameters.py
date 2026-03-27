@@ -1,4 +1,4 @@
-# 测试目的：验证 torch.nn.Module._parameters 属性在 NPU 上的基本行为
+# 测试目的：验证 torch.nn.Module._parameters 属性在加速卡（NPU/GPU）上的基本行为
 # API 名称：torch.nn.Module._parameters
 #
 # 说明：_parameters 是 nn.Module 的内部属性，为 OrderedDict 类型，
@@ -15,7 +15,7 @@
 # | 参数类型           | nn.Parameter（float）、None                    | 已覆盖                                            |
 # | 传参与不传参       | N/A（_parameters 为属性，非调用接口）           | N/A                                               |
 # | 等价类/边界值      | 空模块、单参数、多参数、参数覆盖写              | 已覆盖                                            |
-# | 正常传参场景       | 初始化/注册/赋值/NPU 设备/覆盖写               | 已覆盖                                            |
+# | 正常传参场景       | 初始化/注册/赋值/加速卡设备/覆盖写              | 已覆盖                                            |
 # | 异常传参场景       | 无——内部属性访问无稳定异常路径                  | 未覆盖（无明确证据）                              |
 #
 # 未覆盖项及原因：
@@ -26,18 +26,6 @@
 import pytest
 import torch
 import torch.nn as nn
-import torch_npu  # noqa: F401
-
-
-# ---------------------------------------------------------------------------
-# 辅助：检查 NPU 是否可用
-# ---------------------------------------------------------------------------
-
-def _npu_device():
-    """返回 NPU device 对象，若不可用则 skip。"""
-    if not torch.npu.is_available():
-        pytest.skip("NPU device is not available")
-    return torch.device("npu", 0)
 
 
 # ---------------------------------------------------------------------------
@@ -70,11 +58,10 @@ class TestParametersInit:
 class TestRegisterParameter:
     """通过 register_parameter 注册参数后验证 _parameters 内容。"""
 
-    def test_register_parameter_appears_in_dict(self):
+    def test_register_parameter_appears_in_dict(self, device):
         """register_parameter 后参数出现在 _parameters 中。"""
-        npu = _npu_device()
         m = nn.Module()
-        param = nn.Parameter(torch.randn(4, 4, device=npu))
+        param = nn.Parameter(torch.randn(4, 4, device=device))
         m.register_parameter("weight", param)
         assert "weight" in m._parameters
         assert m._parameters["weight"] is param
@@ -86,24 +73,22 @@ class TestRegisterParameter:
         assert "bias" in m._parameters
         assert m._parameters["bias"] is None
 
-    def test_register_multiple_parameters(self):
+    def test_register_multiple_parameters(self, device):
         """注册多个参数后，_parameters 中均可查到。"""
-        npu = _npu_device()
         m = nn.Module()
-        w = nn.Parameter(torch.randn(3, 3, device=npu))
-        b = nn.Parameter(torch.randn(3, device=npu))
+        w = nn.Parameter(torch.randn(3, 3, device=device))
+        b = nn.Parameter(torch.randn(3, device=device))
         m.register_parameter("weight", w)
         m.register_parameter("bias", b)
         assert "weight" in m._parameters
         assert "bias" in m._parameters
         assert len(m._parameters) == 2
 
-    def test_overwrite_parameter(self):
+    def test_overwrite_parameter(self, device):
         """同名参数被覆盖后，_parameters 中保存新参数。"""
-        npu = _npu_device()
         m = nn.Module()
-        p1 = nn.Parameter(torch.randn(2, device=npu))
-        p2 = nn.Parameter(torch.randn(4, device=npu))
+        p1 = nn.Parameter(torch.randn(2, device=device))
+        p2 = nn.Parameter(torch.randn(4, device=device))
         m.register_parameter("weight", p1)
         m.register_parameter("weight", p2)
         assert m._parameters["weight"] is p2
@@ -117,43 +102,40 @@ class TestRegisterParameter:
 class TestAttributeAssignment:
     """通过属性赋值方式添加 nn.Parameter 时，验证 _parameters 填充行为。"""
 
-    def test_assign_parameter_attribute(self):
+    def test_assign_parameter_attribute(self, device):
         """直接赋值 self.attr = nn.Parameter(...) 后出现在 _parameters。"""
-        npu = _npu_device()
 
         class SimpleModule(nn.Module):
-            def __init__(self):
+            def __init__(self, dev):
                 super().__init__()
-                self.weight = nn.Parameter(torch.randn(5, 5, device=npu))
+                self.weight = nn.Parameter(torch.randn(5, 5, device=dev))
 
-        m = SimpleModule()
+        m = SimpleModule(device)
         assert "weight" in m._parameters
         assert isinstance(m._parameters["weight"], nn.Parameter)
 
 
 # ---------------------------------------------------------------------------
-# 测试：NPU 设备行为
+# 测试：加速卡设备行为
 # ---------------------------------------------------------------------------
 
-class TestNpuDevice:
-    """验证存储在 _parameters 中的参数位于正确的 NPU 设备。"""
+class TestDeviceBehavior:
+    """验证存储在 _parameters 中的参数位于正确的加速卡设备。"""
 
-    def test_parameter_device_is_npu(self):
-        """在 NPU 上创建的参数，其 device.type 应为 'npu'。"""
-        npu = _npu_device()
+    def test_parameter_device_type(self, device):
+        """在加速卡上创建的参数，其 device.type 应与当前后端一致。"""
         m = nn.Module()
-        param = nn.Parameter(torch.randn(3, 3, device=npu))
+        param = nn.Parameter(torch.randn(3, 3, device=device))
         m.register_parameter("weight", param)
         stored = m._parameters["weight"]
-        assert stored.device.type == "npu"
+        assert stored.device.type == device.type
 
-    def test_parameter_index_is_zero(self):
-        """NPU 参数的 device index 应为 0（单卡场景）。"""
-        npu = _npu_device()
+    def test_parameter_device_index(self, device):
+        """加速卡参数的 device index 应为 0（单卡场景）。"""
         m = nn.Module()
-        param = nn.Parameter(torch.randn(2, 2, device=npu))
+        param = nn.Parameter(torch.randn(2, 2, device=device))
         m.register_parameter("w", param)
-        assert m._parameters["w"].device == torch.device("npu", 0)
+        assert m._parameters["w"].device == device
 
 
 # ---------------------------------------------------------------------------
@@ -163,38 +145,32 @@ class TestNpuDevice:
 class TestBuiltinModule:
     """使用 nn.Linear 验证内置模块的 _parameters 行为。"""
 
-    def test_linear_has_weight_and_bias(self):
+    def test_linear_has_weight_and_bias(self, device):
         """nn.Linear 的 _parameters 包含 weight 和 bias。"""
-        npu = _npu_device()
-        m = nn.Linear(4, 8).to(npu)
+        m = nn.Linear(4, 8).to(device)
         assert "weight" in m._parameters
         assert "bias" in m._parameters
 
-    def test_linear_weight_is_parameter(self):
+    def test_linear_weight_is_parameter(self, device):
         """nn.Linear 的 weight 是 nn.Parameter 实例。"""
-        npu = _npu_device()
-        m = nn.Linear(4, 8).to(npu)
+        m = nn.Linear(4, 8).to(device)
         assert isinstance(m._parameters["weight"], nn.Parameter)
 
-    def test_linear_weight_device_is_npu(self):
-        """nn.Linear to(npu) 后，weight 的 device.type 为 'npu'。"""
-        npu = _npu_device()
-        m = nn.Linear(4, 8).to(npu)
-        assert m._parameters["weight"].device.type == "npu"
+    def test_linear_weight_device_type(self, device):
+        """nn.Linear to(device) 后，weight 的 device.type 与后端一致。"""
+        m = nn.Linear(4, 8).to(device)
+        assert m._parameters["weight"].device.type == device.type
 
-    def test_linear_no_bias(self):
+    def test_linear_no_bias(self, device):
         """nn.Linear(bias=False) 时，_parameters 中 bias 键存在但值为 None。"""
-        npu = _npu_device()
-        m = nn.Linear(4, 8, bias=False).to(npu)
-        # bias=False 时，PyTorch 仍通过 __setattr__ 将 bias=None 注册进 _parameters
+        m = nn.Linear(4, 8, bias=False).to(device)
         assert "weight" in m._parameters
         assert "bias" in m._parameters
         assert m._parameters["bias"] is None
 
-    def test_linear_parameters_count_with_bias(self):
+    def test_linear_parameters_count_with_bias(self, device):
         """nn.Linear(bias=True) 时，_parameters 恰好有 2 个条目。"""
-        npu = _npu_device()
-        m = nn.Linear(4, 8, bias=True).to(npu)
+        m = nn.Linear(4, 8, bias=True).to(device)
         assert len(m._parameters) == 2
 
 
@@ -205,11 +181,10 @@ class TestBuiltinModule:
 class TestOrdering:
     """验证 _parameters 保持注册顺序。"""
 
-    def test_insertion_order_preserved(self):
+    def test_insertion_order_preserved(self, device):
         """_parameters 以注册顺序返回键名。"""
-        npu = _npu_device()
         m = nn.Module()
         names = ["alpha", "beta", "gamma"]
         for name in names:
-            m.register_parameter(name, nn.Parameter(torch.randn(2, device=npu)))
+            m.register_parameter(name, nn.Parameter(torch.randn(2, device=device)))
         assert list(m._parameters.keys()) == names
